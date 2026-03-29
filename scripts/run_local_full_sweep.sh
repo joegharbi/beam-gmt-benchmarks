@@ -1,77 +1,82 @@
 #!/usr/bin/env bash
-# One GMT measurement per image: all BEAM HTTP load sizes in sequence inside the loadgen container.
-# Uses usage_scenario_full_sweep.yml (see docs/HTTP_SWEEP.md).
+# One GMT measurement per Docker image: chained HTTP loads inside loadgen (usage_scenario_full_sweep.yml).
 #
-# Default: discover every image under BEAM benchmarks/static and benchmarks/dynamic (same as
-# run_beam_gmt_http.sh). Override with -c, --static-only, --dynamic-only, or BEAM_GMT_HTTP_PRESET_CONTAINERS.
+# You only choose three things on the command line:
+#   1) Container(s)     —  -c NAME …  OR  leave off -c to use the preset lists below + --scope
+#   2) Load / workload  —  -l N …     OR  omit -l to run the full 13 BEAM sizes (100 … 80000)
+#   3) Static / dynamic —  --scope all | static | dynamic  (only when you did NOT pass -c)
 #
-# Optional -l N (repeatable): custom sweep counts (comma list passed as --counts); omit for full 13-point list.
+# Edit the preset image lists in this file when you want “run these containers” without typing -c each time.
+# (Advanced: --dry-run, --continue-on-error — for debugging only.)
 #
-# Paths: scripts/_lib_env.sh, scripts/beam_gmt_http_constants.sh
+# Internally the scenario still uses Green Metrics variable names; you do not need to set those yourself.
 set -euo pipefail
+
+# =============================================================================
+# Preset container names when you do NOT pass -c (same names as BEAM Docker images).
+# Static  → benchmarks/static/*   Dynamic → benchmarks/dynamic/*
+# =============================================================================
+FULL_SWEEP_STATIC_CONTAINERS=(
+  st-erlang-index-27
+)
+FULL_SWEEP_DYNAMIC_CONTAINERS=(
+  # Add dynamic HTTP image names here, e.g.:
+  # dy-erlang-cowboy-27
+)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=_lib_env.sh
 source "${SCRIPT_DIR}/_lib_env.sh"
-# shellcheck source=beam_gmt_http_constants.sh
-source "${SCRIPT_DIR}/beam_gmt_http_constants.sh"
 
 usage() {
   cat <<'EOF'
-Usage: run_local_full_sweep.sh [options]
+run_local_full_sweep.sh — three main knobs
 
-One Green Metrics Tool run per Docker image; each run executes the full HTTP sweep inside loadgen
-(tools/gmt_http_load.py --sweep).
+  1) CONTAINER
+     -c, --container NAME    Run only this image (repeatable). Example: -c st-erlang-index-27
+     (no -c)                  Use the preset lists in this script, filtered by --scope.
 
-  Default: all images in BEAM benchmarks/static + benchmarks/dynamic; full request-count list (13 points).
+  2) LOAD / WORKLOAD (request counts per step in the sweep)
+     -l, --load N             Run only these sizes, in order (repeatable). Example: -l 100 -l 1000
+     (no -l)                  Run the full BEAM list: 100, 1000, 5000, …, 80000 (13 steps).
 
-Options:
-  -c, --container NAME   Only this image (repeatable). Skips discovery; BEAM_ROOT not required.
-  -l, --load N           Include N in the sweep (repeatable). Omit for full BEAM list. Order preserved.
-      --static-only      Discover only benchmarks/static (ignored if -c is used)
-      --dynamic-only     Discover only benchmarks/dynamic
-      --dry-run          Print runner.py commands only (also GMT_SWEEP_DRY_RUN=1)
-      --continue-on-error  Keep going after a failed measurement
-  -h, --help
+  3) SCOPE (only when you did NOT use -c)
+     --scope all              Static preset list, then dynamic preset list (default).
+     --scope static           Only FULL_SWEEP_STATIC_CONTAINERS in this script.
+     --scope dynamic          Only FULL_SWEEP_DYNAMIC_CONTAINERS in this script.
+
+Advanced (optional):
+     --dry-run                Print runner.py commands only
+     --continue-on-error      Continue after a failed GMT run
+
+Preset lists to edit: FULL_SWEEP_STATIC_CONTAINERS and FULL_SWEEP_DYNAMIC_CONTAINERS near the top of this file.
 
 Examples:
   ./scripts/run_local_full_sweep.sh -c st-erlang-index-27
-  ./scripts/run_local_full_sweep.sh --static-only
   ./scripts/run_local_full_sweep.sh -c st-erlang-index-27 -l 100 -l 1000
-
-Edit scripts/beam_gmt_http_constants.sh for optional BEAM_GMT_HTTP_PRESET_CONTAINERS (default subset
-when you do not pass -c). Leave that array empty for full static+dynamic discovery.
-
-Hosted / manual runner: set __GMT_VAR_SWEEP_EXTRA__ to empty string or e.g. "--counts 100,1000" — see usage_scenario_full_sweep.yml.
+  ./scripts/run_local_full_sweep.sh --scope static
 EOF
   exit "${1:-0}"
 }
 
-discover_http_images() {
-  local typ=$1
-  local root="${BEAM_ROOT%/}"
-  local base="${root}/benchmarks/${typ}"
-  [[ -d "$base" ]] || {
-    echo "beam-gmt-benchmarks: benchmarks/${typ} not found at ${base} — check BEAM_ROOT" >&2
-    exit 1
-  }
-  find "$base" -type d -exec test -f {}/Dockerfile \; -print 2>/dev/null | while IFS= read -r d; do
-    basename "$d"
-  done | sort -u
-}
-
 CONTAINERS=()
 LOADS=()
-STATIC_ONLY=0
-DYNAMIC_ONLY=0
+SCOPE="all"
 DRY_RUN=0
 CONTINUE_ERR=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help) usage 0 ;;
-    --static-only) STATIC_ONLY=1; shift ;;
-    --dynamic-only) DYNAMIC_ONLY=1; shift ;;
+    --scope)
+      shift
+      [[ -n "${1:-}" ]] || { echo "--scope needs all|static|dynamic" >&2; exit 1; }
+      case "$1" in
+        all | static | dynamic) SCOPE="$1" ;;
+        *) echo "--scope must be all, static, or dynamic (got $1)" >&2; exit 1 ;;
+      esac
+      shift
+      ;;
     --dry-run) DRY_RUN=1; shift ;;
     --continue-on-error) CONTINUE_ERR=1; shift ;;
     -c | --container)
@@ -80,7 +85,7 @@ while [[ $# -gt 0 ]]; do
       CONTAINERS+=("$1")
       shift
       ;;
-    -l | --load)
+    -l | --load | --loads)
       shift
       [[ -n "${1:-}" ]] || { echo "--load requires a number" >&2; exit 1; }
       [[ "$1" =~ ^[0-9]+$ ]] || { echo "--load must be a positive integer: $1" >&2; exit 1; }
@@ -94,43 +99,43 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ $STATIC_ONLY -eq 1 && $DYNAMIC_ONLY -eq 1 ]]; then
-  echo "Use at most one of --static-only and --dynamic-only" >&2
-  exit 1
-fi
-
-sweep_extra=""
-if [[ ${#LOADS[@]} -gt 0 ]]; then
-  sweep_extra="--counts $(IFS=,; echo "${LOADS[*]}")"
-fi
-
+# ---- Build image list ----
 IMAGES=()
 if [[ ${#CONTAINERS[@]} -gt 0 ]]; then
   IMAGES=("${CONTAINERS[@]}")
-elif [[ ${#BEAM_GMT_HTTP_PRESET_CONTAINERS[@]} -gt 0 ]]; then
-  IMAGES=("${BEAM_GMT_HTTP_PRESET_CONTAINERS[@]}")
 else
-  : "${BEAM_ROOT:?beam-gmt-benchmarks: BEAM_ROOT not set and auto-discovery failed. Put BEAM-web-server-benchmarks next to this repo or set BEAM_ROOT in env.local}"
-  if [[ $STATIC_ONLY -eq 1 ]]; then
-    while IFS= read -r img; do
-      [[ -n "$img" ]] && IMAGES+=("$img")
-    done < <(discover_http_images static)
-  elif [[ $DYNAMIC_ONLY -eq 1 ]]; then
-    while IFS= read -r img; do
-      [[ -n "$img" ]] && IMAGES+=("$img")
-    done < <(discover_http_images dynamic)
-  else
-    while IFS= read -r img; do
-      [[ -n "$img" ]] && IMAGES+=("$img")
-    done < <(discover_http_images static)
-    while IFS= read -r img; do
-      [[ -n "$img" ]] && IMAGES+=("$img")
-    done < <(discover_http_images dynamic)
-  fi
+  case "$SCOPE" in
+    all)
+      IMAGES+=("${FULL_SWEEP_STATIC_CONTAINERS[@]}")
+      IMAGES+=("${FULL_SWEEP_DYNAMIC_CONTAINERS[@]}")
+      ;;
+    static) IMAGES+=("${FULL_SWEEP_STATIC_CONTAINERS[@]}") ;;
+    dynamic) IMAGES+=("${FULL_SWEEP_DYNAMIC_CONTAINERS[@]}") ;;
+  esac
+  # Drop empty entries (unset slots in sparse arrays)
+  _tmp=()
+  for img in "${IMAGES[@]}"; do
+    [[ -n "$img" ]] || continue
+    _tmp+=("$img")
+  done
+  IMAGES=("${_tmp[@]}")
   if [[ ${#IMAGES[@]} -eq 0 ]]; then
-    echo "No HTTP containers discovered for the selected scope" >&2
+    cat >&2 <<EOF
+No images to run: preset list for scope "$SCOPE" is empty.
+
+  Edit FULL_SWEEP_STATIC_CONTAINERS / FULL_SWEEP_DYNAMIC_CONTAINERS in:
+    ${SCRIPT_DIR}/run_local_full_sweep.sh
+
+  Or pass explicit names:  -c your-image-name
+EOF
     exit 1
   fi
+fi
+
+# Map workload to the single optional tail the scenario file expects (implementation detail).
+sweep_extra=""
+if [[ ${#LOADS[@]} -gt 0 ]]; then
+  sweep_extra="--counts $(IFS=,; echo "${LOADS[*]}")"
 fi
 
 if [[ $DRY_RUN -eq 1 ]]; then
@@ -155,12 +160,11 @@ total_runs=${#IMAGES[@]}
 echo "=== run_local_full_sweep.sh ==="
 echo "GMT_ROOT=$GMT_ROOT"
 echo "BEAM_GMT_BENCHMARKS_ROOT=$REPO_ROOT"
-echo "BEAM_ROOT=${BEAM_ROOT:-<not used (explicit/preset images)>}"
-echo "Images (${#IMAGES[@]}): ${IMAGES[*]}"
+echo "Containers (${#IMAGES[@]}): ${IMAGES[*]}"
 if [[ ${#LOADS[@]} -gt 0 ]]; then
-  echo "Sweep counts (custom): ${LOADS[*]}"
+  echo "Workload (custom steps): ${LOADS[*]}"
 else
-  echo "Sweep counts: full BEAM list (${#BEAM_GMT_HTTP_FULL_COUNTS[@]} points)"
+  echo "Workload: full BEAM sweep (13 steps: 100 … 80000)"
 fi
 echo "Total GMT runs: $total_runs"
 run_idx=0

@@ -26,7 +26,7 @@ Supply your Git repository URL, branch, and—if the UI supports it—the **usag
 |----------|---------|---------|
 | `__GMT_VAR_BEAM_IMAGE__` | `ghcr.io/your-org/st-erlang-index-27:v1` | Server image to measure |
 | `__GMT_VAR_NUM_REQUESTS__` | `10000` | Total parallel GETs (`usage_scenario.yml` single-load scenario) |
-| `__GMT_VAR_SWEEP_EXTRA__` | *(empty)* or `--counts 100,1000` | **`usage_scenario_full_sweep.yml` only**: append to `gmt_http_load.py --sweep`; empty = full BEAM list |
+| `__GMT_VAR_SWEEP_EXTRA__` | *(empty)* or `--counts 100,1000` | **`usage_scenario_full_sweep.yml` only** (hosted / manual): appended after `--sweep` in the load command; empty = full 13-step list. Local runs: use **`run_local_full_sweep.sh`** (`-l` / no `-l`) instead of setting this by hand. |
 
 If the hosted form does not expose variables, duplicate `usage_scenario.yml` on a branch with literal `image:` and `num_requests` values, or open a scenario file per image (see [ADDING_SCENARIOS.md](ADDING_SCENARIOS.md)).
 

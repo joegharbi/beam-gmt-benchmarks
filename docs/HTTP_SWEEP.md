@@ -11,21 +11,21 @@ Green Metrics Tool records **one measurement per `runner.py` invocation**. Parit
 Yes. You can run the full BEAM count list **inside the same `loadgen` container** and still use **one** `runner.py` invocation — useful when a **hosted quota** counts jobs, not HTTP rounds.
 
 - **`tools/gmt_http_load.py --sweep`** — waits for HTTP 200 **once**, then runs the 13 counts **in order** (same tuple as `scripts/beam_gmt_http_constants.sh`).
-- Scenario file: **`usage_scenario_full_sweep.yml`**: **`__GMT_VAR_BEAM_IMAGE__`** and **`__GMT_VAR_SWEEP_EXTRA__`** (empty for default full list, or e.g. `--counts 100,1000`).
+- Scenario file: **`usage_scenario_full_sweep.yml`** (internally passes the container image and optional extra CLI for `gmt_http_load.py` — you normally only use **`run_local_full_sweep.sh`** or the hosted variable form in [CLUSTER_AND_GITHUB.md](CLUSTER_AND_GITHUB.md)).
 
 **Tradeoffs vs 13 separate GMT runs:** loads are **back-to-back** in one session (shared thermal state, no cool-down between “official” runs). Energy and latency are still usable for exploration or hosted sanity checks; for paper-grade isolation, prefer **`run_beam_gmt_http.sh`** (one run per count).
 
-### `run_local_full_sweep.sh`
+### `run_local_full_sweep.sh` — three knobs
 
-Same discovery rules as **`run_beam_gmt_http.sh`** (see [beam_gmt_http_constants.sh](../scripts/beam_gmt_http_constants.sh) **`BEAM_GMT_HTTP_PRESET_CONTAINERS`**):
+There are **no extra environment variables** you must learn for daily use. Everything is flags, plus **preset image lists at the top of the script**.
 
-| Invocation | Behaviour |
-|------------|-----------|
-| *(no args)* | All images under **`benchmarks/static`** + **`benchmarks/dynamic`**; **one** GMT run per image; each run uses the **full** 13-count sweep. |
-| `--static-only` / `--dynamic-only` | Restrict discovery (ignored if `-c` is used). |
-| `-c NAME` | Only this image (repeatable). **No** `BEAM_ROOT` required. |
-| `-l N` | Add **N** to the sweep (repeatable). If any `-l` is given, only those counts run (order preserved). If omitted, default full BEAM list. |
-| `--dry-run` / `--continue-on-error` | Same as `run_beam_gmt_http.sh`. |
+| Knob | Meaning |
+|------|--------|
+| **Containers** | **`-c NAME`** (repeatable) = only these images. **No `-c`** = use **`FULL_SWEEP_STATIC_CONTAINERS`** and **`FULL_SWEEP_DYNAMIC_CONTAINERS`** defined at the top of **`scripts/run_local_full_sweep.sh`** (edit that file to change the default list). |
+| **Workload** | **`-l N`** (repeatable) = only these request counts, in order. **No `-l`** = full BEAM sweep **13** steps (**100** through **80000**). |
+| **Static / dynamic** | **`--scope all`** (default) = static preset list, then dynamic preset list. **`--scope static`** / **`--scope dynamic`** = only that half of the presets. **Ignored if you passed `-c`.** |
+
+Optional debugging only: **`--dry-run`**, **`--continue-on-error`**.
 
 Logs: `logs/gmt_beam_full_sweep_<timestamp>.log`
 
@@ -34,13 +34,13 @@ Examples:
 ```bash
 cd /path/to/beam-gmt-benchmarks
 
-# Only st-erlang-index-27, full 13 inputs (one GMT measurement):
+# One container by name, all 13 load steps in one GMT run:
 ./scripts/run_local_full_sweep.sh -c st-erlang-index-27
 
-# All static HTTP images only:
-./scripts/run_local_full_sweep.sh --static-only
+# Default presets in the script (static list); full 13 steps:
+./scripts/run_local_full_sweep.sh --scope static
 
-# One image, custom subset of counts:
+# One container, only two load sizes:
 ./scripts/run_local_full_sweep.sh -c st-erlang-index-27 -l 100 -l 1000
 ```
 
