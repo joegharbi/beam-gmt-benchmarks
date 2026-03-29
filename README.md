@@ -9,7 +9,9 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
 | `usage_scenario.yml` | Root scenario GMT expects; one **beam-server** + **loadgen**; image and request count are GMT variables. |
 | `tools/gmt_http_load.py` | Load generator (BEAM-comparable: env-based health wait, then `ThreadPoolExecutor` GETs). |
 | `scripts/run_local_production.sh` | **Production-style** local run: no `--dev-*`, no `--skip-optimizations`, no `--skip-download-dependencies`. |
+| `scripts/run_gmt_http_sweep.sh` | **BEAM-style sweep**: same HTTP request-count lists as BEAM (`100`…`80000`, plus `--quick` / `--super-quick`); one GMT run per (image × count). |
 | `docs/LOCAL_PRODUCTION.md` | Full local checklist, env vars, troubleshooting. |
+| `docs/HTTP_SWEEP.md` | Why sweeps are separate GMT runs; examples; `GMT_SWEEP_*` env vars. |
 | `docs/CLUSTER_AND_GITHUB.md` | Hosted service, cluster machine types, image registry notes. |
 | `docs/ADDING_SCENARIOS.md` | How to add more images following BEAM’s structure. |
 
@@ -26,6 +28,18 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
    ```
 
 Defaults: `GMT_VAR_BEAM_IMAGE=st-erlang-index-27`, `GMT_VAR_NUM_REQUESTS=10000`. Override with environment variables before calling the script.
+
+### Full static/dynamic sweep (like BEAM `make run`)
+
+BEAM runs 13 request counts per HTTP container by default. Here, each count is a **separate** GMT measurement. See [docs/HTTP_SWEEP.md](docs/HTTP_SWEEP.md).
+
+```bash
+export GMT_ROOT=/path/to/green-metrics-tool
+export BEAM_ROOT=/path/to/BEAM-web-server-benchmarks
+./scripts/run_gmt_http_sweep.sh static              # all static images × full count list
+./scripts/run_gmt_http_sweep.sh dynamic --quick       # all dynamic × three counts
+./scripts/run_gmt_http_sweep.sh st-erlang-index-27    # one image × full count list
+```
 
 ## GMT variables (scenario)
 

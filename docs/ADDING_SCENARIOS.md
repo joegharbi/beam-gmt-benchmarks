@@ -7,6 +7,9 @@ The BEAM suite discovers benchmarks by directory layout and uses the **directory
 **Pattern A — variables (recommended for cluster):**  
 Keep a single `usage_scenario.yml` and pass different `__GMT_VAR_BEAM_IMAGE__` / `__GMT_VAR_NUM_REQUESTS__` per run (local `--variable` flags or hosted UI).
 
+**Pattern A′ — full BEAM-style HTTP sweep:**  
+Use `scripts/run_gmt_http_sweep.sh` to repeat the same **request-count lists** as `BEAM-web-server-benchmarks/scripts/run_benchmarks.sh` (100 through 80000, or `--quick` / `--super-quick`). Details: [HTTP_SWEEP.md](HTTP_SWEEP.md).
+
 **Pattern B — named scenario files:**  
 Copy the root file to a new name and pin values for clarity in Git history:
 
