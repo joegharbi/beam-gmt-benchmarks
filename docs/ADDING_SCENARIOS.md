@@ -19,10 +19,13 @@ usage_scenario.st-erlang-cowboy-27.yml      # image + N fixed in file
 usage_scenario.dy-elixir-phoenix-1-8.yml
 ```
 
-Run with:
+Run with (after `source env.local` or exporting roots; see [PATHS_AND_ENV.md](PATHS_AND_ENV.md)):
 
 ```bash
-python3 "$GMT_ROOT/runner.py" --uri . --filename usage_scenario.st-erlang-cowboy-27.yml --name "..." \
+"${GMT_PYTHON:-${GMT_ROOT}/.venv/bin/python3}" "${GMT_ROOT}/runner.py" \
+  --uri "${BEAM_GMT_BENCHMARKS_ROOT}" \
+  --filename usage_scenario.st-erlang-cowboy-27.yml \
+  --name "..." \
   --variable "__GMT_VAR_BEAM_IMAGE__=st-erlang-cowboy-27" \
   --variable "__GMT_VAR_NUM_REQUESTS__=10000"
 ```

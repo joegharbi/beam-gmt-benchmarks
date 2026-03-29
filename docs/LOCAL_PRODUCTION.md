@@ -13,20 +13,22 @@ This document describes how to run **full** Green Metrics Tool (GMT) measurement
 
 Follow GMT’s own installation and configuration guides for your distribution. The authoritative entry points are the [Green Metrics Tool documentation](https://docs.green-coding.io/) and the `README.md` in your GMT checkout.
 
+**Install locations** are never hardcoded in scripts: set **`GMT_ROOT`** (and optionally **`BEAM_GMT_BENCHMARKS_ROOT`**, **`BEAM_ROOT`**) via `env.local` or your environment. See [PATHS_AND_ENV.md](PATHS_AND_ENV.md).
+
 ## Prerequisites
 
 1. **Green Metrics Tool** installed and configured (PostgreSQL, Redis, `config.yml`, nginx/API stack as in the official install). Use a **venv** that includes GMT’s application dependencies (including those under `docker/requirements.txt` if the optimization step imports FastAPI and related packages).
 2. **Docker** with sufficient disk and permissions for GMT’s build/run flow.
 3. **Git**: `runner.py --uri` must point at a **git repository** (this folder after `git init` and at least one commit).
-4. **BEAM benchmark image** built locally (or pulled from a registry) using the same naming as **BEAM-web-server-benchmarks**: directory name under `benchmarks/` = Docker image name. The default scenario uses **`st-erlang-index-27`** (static Erlang “index” on OTP 27). Build it from your BEAM repo, for example:
+4. **BEAM benchmark image** built locally (or pulled from a registry) using the same naming as **BEAM-web-server-benchmarks**: directory name under `benchmarks/` = Docker image name. The default scenario uses **`st-erlang-index-27`** (static Erlang “index” on OTP 27). Build from the root of your BEAM clone (`BEAM_ROOT`):
 
    ```bash
-   cd /path/to/BEAM-web-server-benchmarks
+   cd "${BEAM_ROOT}"
    make build
-   # or docker build -t st-erlang-index-27 ./benchmarks/static/erlang/index/st-erlang-index-27
+   # or: docker build -t st-erlang-index-27 "${BEAM_ROOT}/benchmarks/static/erlang/index/st-erlang-index-27"
    ```
 
-   Adjust the path if your layout differs; the image name must match `GMT_VAR_BEAM_IMAGE`.
+   Set `BEAM_ROOT` in `env.local` to that clone’s root directory. The image name must match `GMT_VAR_BEAM_IMAGE`.
 
 5. **Port 80 inside the scenario network**: The workload calls `http://beam-server:80/`. BEAM Dockerfiles are expected to **EXPOSE 80** and serve HTTP on `/` (same assumption as the BEAM suite).
 
@@ -44,10 +46,9 @@ Set them in the **host** environment if GMT propagates them into the loadgen con
 
 ## Run script
 
-From this repository:
+Configure roots once (recommended: `cp env.example env.local` and set `GMT_ROOT=...` there), then:
 
 ```bash
-export GMT_ROOT=/path/to/green-metrics-tool
 export GMT_VAR_BEAM_IMAGE=st-erlang-index-27      # optional; this is the default
 export GMT_VAR_NUM_REQUESTS=10000                   # optional; default 10000
 export GMT_RUN_NAME="BEAM static HTTP — st-erlang-index-27"
@@ -55,21 +56,23 @@ export GMT_RUN_NAME="BEAM static HTTP — st-erlang-index-27"
 ./scripts/run_local_production.sh
 ```
 
-`GMT_PYTHON` can point to another interpreter if you do not use `$GMT_ROOT/.venv/bin/python3`.
+`GMT_PYTHON` can override the interpreter if you do not use `${GMT_ROOT}/.venv/bin/python3`.
 
 ## Manual `runner.py` invocation
 
-Equivalent to the script:
+Equivalent to the script (all paths via root variables):
 
 ```bash
-cd /path/to/beam-gmt-benchmarks
-python3 /path/to/green-metrics-tool/runner.py \
-  --uri "$(pwd)" \
+cd "${BEAM_GMT_BENCHMARKS_ROOT}"
+"${GMT_PYTHON:-${GMT_ROOT}/.venv/bin/python3}" "${GMT_ROOT}/runner.py" \
+  --uri "${BEAM_GMT_BENCHMARKS_ROOT}" \
   --filename usage_scenario.yml \
   --name "BEAM static HTTP (GMT)" \
   --variable "__GMT_VAR_BEAM_IMAGE__=st-erlang-index-27" \
   --variable "__GMT_VAR_NUM_REQUESTS__=10000"
 ```
+
+For a manual command in an interactive shell, run `set -a && source /path/to/beam-gmt-benchmarks/env.local && set +a` first (or export `BEAM_GMT_BENCHMARKS_ROOT` to this repo’s root). The provided scripts set `BEAM_GMT_BENCHMARKS_ROOT` automatically when unset.
 
 ## Troubleshooting
 

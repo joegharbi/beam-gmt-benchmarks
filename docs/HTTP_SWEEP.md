@@ -20,11 +20,9 @@ No. It is **orchestration only**: the same `usage_scenario.yml` and variables as
 
 ## Examples
 
-Discover all **static** containers from your BEAM repo and run the **full** sweep (build all images first):
+Discover all **static** containers from your BEAM repo and run the **full** sweep (build all images first). Put **`GMT_ROOT`** and **`BEAM_ROOT`** in `env.local` (see `env.example` and [PATHS_AND_ENV.md](PATHS_AND_ENV.md)):
 
 ```bash
-export GMT_ROOT=/path/to/green-metrics-tool
-export BEAM_ROOT=/path/to/BEAM-web-server-benchmarks
 ./scripts/run_gmt_http_sweep.sh static
 ```
 

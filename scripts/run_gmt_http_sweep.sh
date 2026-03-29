@@ -5,29 +5,25 @@
 # Each iteration is a separate runner.py invocation (separate DB run, full metric capture).
 # WebSocket containers are not supported here (different workload tool).
 #
+# Paths: define GMT_ROOT, BEAM_ROOT, and optionally BEAM_GMT_BENCHMARKS_ROOT in env.local
+# (see env.example and docs/PATHS_AND_ENV.md). No hardcoded install locations.
+#
 # Usage:
-#   export GMT_ROOT=/path/to/green-metrics-tool
-#   export BEAM_ROOT=/path/to/BEAM-web-server-benchmarks   # only if using static|dynamic|all
 #   ./scripts/run_gmt_http_sweep.sh static [--quick|--super-quick]
 #   ./scripts/run_gmt_http_sweep.sh dynamic [--quick|--super-quick]
 #   ./scripts/run_gmt_http_sweep.sh all [--quick|--super-quick]    # static + dynamic (many runs)
 #   ./scripts/run_gmt_http_sweep.sh st-erlang-index-27 [more-images...] [--quick|--super-quick]
 #
 # Env:
+#   BEAM_GMT_ENV_FILE         Optional file to source before env.local (absolute path)
 #   GMT_SWEEP_DRY_RUN=1       Print runner commands instead of executing
 #   GMT_SWEEP_CONTINUE_ON_ERROR=1  Continue after a failed runner exit (default: stop on first error)
-#   GMT_PYTHON                Python for runner (default: $GMT_ROOT/.venv/bin/python3 or python3)
+#   GMT_PYTHON                Python for runner (default: ${GMT_ROOT}/.venv/bin/python3 or python3)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-: "${GMT_ROOT:?Set GMT_ROOT to your green-metrics-tool checkout}"
-RUNNER="$GMT_ROOT/runner.py"
-[[ -f "$RUNNER" ]] || { echo "runner.py not found: $RUNNER" >&2; exit 1; }
-
-PY="${GMT_PYTHON:-$GMT_ROOT/.venv/bin/python3}"
-[[ -x "$PY" ]] || PY="${GMT_PYTHON:-python3}"
+# shellcheck source=_lib_env.sh
+source "${SCRIPT_DIR}/_lib_env.sh"
 
 # Same arrays as BEAM-web-server-benchmarks/scripts/run_benchmarks.sh (HTTP only)
 FULL_HTTP_REQUESTS=(100 1000 5000 8000 10000 15000 20000 30000 40000 50000 60000 70000 80000)
@@ -35,14 +31,15 @@ QUICK_HTTP_REQUESTS=(1000 5000 10000)
 SUPER_QUICK_HTTP_REQUESTS=(1000)
 
 usage() {
-  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
 discover_http_images() {
   local typ=$1
-  local base="${BEAM_ROOT}/benchmarks/${typ}"
-  [[ -d "$base" ]] || { echo "BEAM benchmarks dir not found: $base (set BEAM_ROOT?)" >&2; exit 1; }
+  local root="${BEAM_ROOT%/}"
+  local base="${root}/benchmarks/${typ}"
+  [[ -d "$base" ]] || { echo "BEAM benchmarks dir not found: $base — set BEAM_ROOT to the root of BEAM-web-server-benchmarks" >&2; exit 1; }
   find "$base" -type d -exec test -f {}/Dockerfile \; -print 2>/dev/null | while IFS= read -r d; do
     basename "$d"
   done | sort -u
@@ -85,7 +82,7 @@ fi
 IMAGES=()
 case "${args[0]}" in
   static|dynamic)
-    : "${BEAM_ROOT:?Set BEAM_ROOT to your BEAM-web-server-benchmarks checkout for static/dynamic discovery}"
+    : "${BEAM_ROOT:?Set BEAM_ROOT to the root directory of your BEAM-web-server-benchmarks checkout (for static/dynamic discovery)}"
     while IFS= read -r img; do
       [[ -n "$img" ]] && IMAGES+=("$img")
     done < <(discover_http_images "${args[0]}")
@@ -95,7 +92,7 @@ case "${args[0]}" in
     fi
     ;;
   all)
-    : "${BEAM_ROOT:?Set BEAM_ROOT to your BEAM-web-server-benchmarks checkout for all discovery}"
+    : "${BEAM_ROOT:?Set BEAM_ROOT to the root directory of your BEAM-web-server-benchmarks checkout (for all discovery)}"
     while IFS= read -r img; do
       [[ -n "$img" ]] && IMAGES+=("$img")
     done < <(discover_http_images static)
@@ -116,12 +113,14 @@ if ! git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Warning: $REPO_ROOT is not a git repo; GMT --uri may require git init + commit." >&2
 fi
 
-mkdir -p "$REPO_ROOT/logs"
-LOG="$REPO_ROOT/logs/gmt_http_sweep_$(date +%Y-%m-%d_%H%M%S).log"
+mkdir -p "${REPO_ROOT}/logs"
+LOG="${REPO_ROOT}/logs/gmt_http_sweep_$(date +%Y-%m-%d_%H%M%S).log"
 echo "Logging to $LOG"
 exec > >(tee -a "$LOG") 2>&1
 
 total_runs=$((${#IMAGES[@]} * ${#REQUEST_COUNTS[@]}))
+echo "GMT_ROOT=$GMT_ROOT"
+echo "BEAM_GMT_BENCHMARKS_ROOT=$REPO_ROOT"
 echo "Images: ${#IMAGES[@]}, request counts per image: ${#REQUEST_COUNTS[@]} (${REQUEST_COUNTS[*]}), total GMT runs: $total_runs"
 run_idx=0
 
