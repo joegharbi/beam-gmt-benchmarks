@@ -20,7 +20,8 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
 | `env.example` | Optional **`env.local`** template — only if auto-discovery fails. |
 | `docs/PATHS_AND_ENV.md` | Default “sibling folders” layout; overrides when needed. |
 | `docs/ENERGY_METRICS.md` | RAPL in `config.yml`, dev `hardware_info_root.py`, where to read µJ in stats. |
-| `scripts/check_rapl_ready.sh` | Quick host checks (powercap, `msr`, `rdmsr`) before energy runs. |
+| `scripts/check_rapl_ready.sh` | Host + **setuid** RAPL binary checks (avoids `rdmsr: Permission denied`). |
+| `scripts/build_gmt_rapl_providers.sh` | Builds CPU/DRAM RAPL `metric-provider-binary` with **setuid root** (needs `sudo`). |
 
 ## Quick start (local, production-style)
 
