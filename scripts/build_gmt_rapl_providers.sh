@@ -21,16 +21,27 @@ done
 echo "=== Building lib/c (gmt-lib.o only — RAPL does not need gmt-container-lib / curl) ==="
 make -C "$C_LIB" gmt-lib.o
 
-echo "=== Building CPU RAPL metric-provider-binary (setuid root) ==="
+echo "=== Building CPU RAPL metric-provider-binary ==="
 make -C "$CPU_RAPL"
 
-echo "=== Building memory RAPL metric-provider-binary (setuid root) ==="
+echo "=== Building memory RAPL metric-provider-binary ==="
 make -C "$MEM_RAPL"
 
+# GMT's Makefile sets setuid only when the compile recipe runs. If the binary already
+# exists and is "up to date", make skips chown/chmod — leaving youssef:youssef and no 's' bit.
+echo "=== Applying setuid root (always — fixes stale 'up to date' builds) ==="
+sudo chown root:root "$CPU_RAPL/metric-provider-binary" "$MEM_RAPL/metric-provider-binary"
+sudo chmod u+s "$CPU_RAPL/metric-provider-binary" "$MEM_RAPL/metric-provider-binary"
+
 echo ""
-echo "Verify setuid (expect 'rws' or 'r-s' in owner execute bit, owner root):"
+echo "Verify setuid (expect owner root and 's' in user execute, e.g. -rwsr-xr-x):"
 ls -l "$CPU_RAPL/metric-provider-binary" "$MEM_RAPL/metric-provider-binary"
 
 echo ""
-echo "Smoke test (should not print Permission denied):"
-"$CPU_RAPL/metric-provider-binary" -c || true
+echo "Smoke test (must not print Permission denied):"
+if "$CPU_RAPL/metric-provider-binary" -c; then
+  echo "OK: CPU RAPL self-check passed"
+else
+  echo "FAIL: still cannot read MSRs — check msr module, Secure Boot, VM" >&2
+  exit 1
+fi

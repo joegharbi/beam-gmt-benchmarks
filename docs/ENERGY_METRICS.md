@@ -42,6 +42,8 @@ ls -l "$GMT_ROOT/metric_providers/cpu/energy/rapl/msr/component/metric-provider-
 "$GMT_ROOT/metric_providers/cpu/energy/rapl/msr/component/metric-provider-binary" -c
 ```
 
+If you still see **`youssef:youssef`** and **no `s` bit**, `make` likely said “up to date” and never ran the Makefile’s `chown`/`chmod`. Re-run **`./scripts/build_gmt_rapl_providers.sh`** — it always applies **`sudo chown root:root`** and **`chmod u+s`** after the build.
+
 Alternative (not the default GMT path): add your user to group **`msr`** and use udev rules so `/dev/cpu/*/msr` is group-readable; the **setuid build** above is what the official Makefile encodes.
 
 ## 4. Host checklist
