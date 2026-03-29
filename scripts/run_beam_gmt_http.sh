@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Orchestrate BEAM static/dynamic HTTP measurements through Green Metrics Tool.
-# One GMT measurement per (container image × request count). WebSocket: not yet supported.
 #
-# Defaults with no arguments: discover all images under BEAM benchmarks/static and
-# benchmarks/dynamic, use the full HTTP count list (same as BEAM full HTTP run).
+# Default (--separate): one GMT measurement per (image × load) — usage_scenario.yml
+# With --together:     one GMT measurement per image; all loads run in sequence in loadgen
+#                      — usage_scenario_full_sweep.yml (see docs/HTTP_SWEEP.md).
 #
-# Paths: sibling-folder auto-discovery — see docs/PATHS_AND_ENV.md and scripts/_lib_env.sh
+# Paths: sibling-folder auto-discovery — docs/PATHS_AND_ENV.md, scripts/_lib_env.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,28 +18,34 @@ usage() {
   cat <<'EOF'
 Usage: run_beam_gmt_http.sh [options]
 
-Run BEAM HTTP server images through GMT (one runner.py invocation per image × load).
+Single entry point for BEAM-style HTTP runs in GMT.
 
-  Default: all containers in BEAM benchmarks/static + benchmarks/dynamic, full request-count
-  list (13 points from 100 to 80000, same as BEAM-web-server-benchmarks full HTTP).
+  MODE (pick one — default is separate):
+      --separate       One Green Metrics run per (Docker image × request count). Parity with
+                       BEAM CSV rows (default when neither flag is passed).
+      --together       One Green Metrics run per image; all selected loads run back-to-back in
+                       the loadgen container (--sweep). Same flags for images and counts.
+                       Aliases: --all-in-one, --altogether
 
-Options:
-  -c, --container NAME   Only this Docker image (repeatable). Skips discovery; BEAM_ROOT not needed.
-                         Example: -c st-erlang-index-27 with no -l runs all 13 BEAM loads (100…80000).
-  -l, --load N           Request count (repeatable). Omit to use full / quick / super-quick preset.
-                         Cannot combine --load with --quick / --super-quick.
+  Same container / load flags for both modes:
+  -c, --container NAME   Only this image (repeatable). Skips discovery; BEAM_ROOT not needed.
+  -l, --load N           Request count (repeatable). Omit for full / quick / super-quick preset.
       --quick            Three counts: 1000, 5000, 10000
       --super-quick      Single count: 1000
       --static-only      Discover only benchmarks/static (ignored if -c is used)
       --dynamic-only     Discover only benchmarks/dynamic
-      --dry-run          Print runner commands only
+      --dry-run          Print runner.py commands only
       --continue-on-error  Keep going after a failed measurement
   -h, --help
 
-Edit scripts/beam_gmt_http_constants.sh for optional BEAM_GMT_HTTP_PRESET_CONTAINERS (default
-subset when you do not pass -c). Leave that array empty for full static+dynamic discovery.
+Preset images when you do not pass -c: edit BEAM_GMT_HTTP_PRESET_CONTAINERS in
+scripts/beam_gmt_http_constants.sh (or leave empty for full static+dynamic discovery).
 
-Env: GMT_SWEEP_DRY_RUN, GMT_SWEEP_CONTINUE_ON_ERROR, BEAM_GMT_VERBOSE — see docs/HTTP_SWEEP.md
+Examples:
+  ./scripts/run_beam_gmt_http.sh -c st-elixir-index-1-16
+  ./scripts/run_beam_gmt_http.sh --together -c st-elixir-index-1-16
+
+Env: GMT_SWEEP_DRY_RUN, GMT_SWEEP_CONTINUE_ON_ERROR — docs/HTTP_SWEEP.md
 EOF
   exit "${1:-0}"
 }
@@ -65,10 +71,14 @@ QUICK=0
 SUPER_QUICK=0
 DRY_RUN=0
 CONTINUE_ERR=0
+TOGETHER=0
+SEPARATE_EXPLICIT=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help) usage 0 ;;
+    --separate) SEPARATE_EXPLICIT=1; TOGETHER=0; shift ;;
+    --together | --all-in-one | --altogether) TOGETHER=1; shift ;;
     --quick) QUICK=1; shift ;;
     --super-quick) SUPER_QUICK=1; shift ;;
     --static-only) STATIC_ONLY=1; shift ;;
@@ -81,7 +91,7 @@ while [[ $# -gt 0 ]]; do
       CONTAINERS+=("$1")
       shift
       ;;
-    -l | --load)
+    -l | --load | --loads)
       shift
       [[ -n "${1:-}" ]] || { echo "--load requires a number" >&2; exit 1; }
       [[ "$1" =~ ^[0-9]+$ ]] || { echo "--load must be a positive integer: $1" >&2; exit 1; }
@@ -94,6 +104,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ $SEPARATE_EXPLICIT -eq 1 && $TOGETHER -eq 1 ]]; then
+  echo "Use at most one of --separate and --together" >&2
+  exit 1
+fi
 
 if [[ $STATIC_ONLY -eq 1 && $DYNAMIC_ONLY -eq 1 ]]; then
   echo "Use at most one of --static-only and --dynamic-only" >&2
@@ -148,6 +163,11 @@ else
   fi
 fi
 
+sweep_extra=""
+if [[ $TOGETHER -eq 1 ]]; then
+  sweep_extra="--counts $(IFS=,; echo "${REQUEST_COUNTS[*]}")"
+fi
+
 if [[ $DRY_RUN -eq 1 ]]; then
   export GMT_SWEEP_DRY_RUN=1
 fi
@@ -166,12 +186,16 @@ exec > >(tee -a "$LOG") 2>&1
 
 beam_gmt_rapl_laptop_hint
 
-# GMT's system check runs `git status` in the *current working directory* (not --uri).
-# If you invoke this script from ~ or another non-repo path, runner.py would see git fail.
 cd "$REPO_ROOT"
 
-total_runs=$((${#IMAGES[@]} * ${#REQUEST_COUNTS[@]}))
+if [[ $TOGETHER -eq 1 ]]; then
+  total_runs=${#IMAGES[@]}
+else
+  total_runs=$((${#IMAGES[@]} * ${#REQUEST_COUNTS[@]}))
+fi
+
 echo "=== run_beam_gmt_http.sh ==="
+echo "Mode: $([[ $TOGETHER -eq 1 ]] && echo 'together (one GMT run per image, chained loads)' || echo 'separate (one GMT run per image × load)')"
 echo "GMT_ROOT=$GMT_ROOT"
 echo "BEAM_GMT_BENCHMARKS_ROOT=$REPO_ROOT"
 echo "BEAM_ROOT=${BEAM_ROOT:-<not used (explicit/preset images)>}"
@@ -180,20 +204,20 @@ echo "Loads (${#REQUEST_COUNTS[@]}): ${REQUEST_COUNTS[*]}"
 echo "Total GMT runs: $total_runs"
 run_idx=0
 
-for image in "${IMAGES[@]}"; do
-  for n in "${REQUEST_COUNTS[@]}"; do
+if [[ $TOGETHER -eq 1 ]]; then
+  for image in "${IMAGES[@]}"; do
     run_idx=$((run_idx + 1))
-    name="BEAM-HTTP-${image}-n${n}"
+    name="BEAM-HTTP-full-sweep-${image}"
     echo ""
     echo "========== [$run_idx/$total_runs] $name =========="
 
     cmd=(
       "$PY" "$RUNNER"
       --uri "$REPO_ROOT"
-      --filename usage_scenario.yml
+      --filename usage_scenario_full_sweep.yml
       --name "$name"
       --variable "__GMT_VAR_BEAM_IMAGE__=${image}"
-      --variable "__GMT_VAR_NUM_REQUESTS__=${n}"
+      --variable "__GMT_VAR_SWEEP_EXTRA__=${sweep_extra}"
     )
 
     if [[ "${GMT_SWEEP_DRY_RUN:-0}" == "1" ]]; then
@@ -213,7 +237,42 @@ for image in "${IMAGES[@]}"; do
       fi
     fi
   done
-done
+else
+  for image in "${IMAGES[@]}"; do
+    for n in "${REQUEST_COUNTS[@]}"; do
+      run_idx=$((run_idx + 1))
+      name="BEAM-HTTP-${image}-n${n}"
+      echo ""
+      echo "========== [$run_idx/$total_runs] $name =========="
+
+      cmd=(
+        "$PY" "$RUNNER"
+        --uri "$REPO_ROOT"
+        --filename usage_scenario.yml
+        --name "$name"
+        --variable "__GMT_VAR_BEAM_IMAGE__=${image}"
+        --variable "__GMT_VAR_NUM_REQUESTS__=${n}"
+      )
+
+      if [[ "${GMT_SWEEP_DRY_RUN:-0}" == "1" ]]; then
+        printf '%q ' "${cmd[@]}"
+        echo
+        continue
+      fi
+
+      set +e
+      "${cmd[@]}"
+      rc=$?
+      set -e
+      if [[ $rc -ne 0 ]]; then
+        echo "[ERROR] runner exited $rc for $name" >&2
+        if [[ "${GMT_SWEEP_CONTINUE_ON_ERROR:-0}" != "1" ]]; then
+          exit "$rc"
+        fi
+      fi
+    done
+  done
+fi
 
 echo ""
 echo "Finished at $(date). Log: $LOG"

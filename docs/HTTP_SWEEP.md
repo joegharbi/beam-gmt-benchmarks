@@ -12,59 +12,32 @@ Then rerun `./scripts/run_beam_gmt_http.sh …`. Details: [ENERGY_METRICS.md](EN
 
 In **BEAM-web-server-benchmarks**, static and dynamic HTTP benchmarks use a fixed list of `--num_requests` values per container. The full list is 13 points from **100** through **80000** (`scripts/run_benchmarks.sh`: `full_http_requests`).
 
-Green Metrics Tool records **one measurement per `runner.py` invocation**. Parity with BEAM is:
+Green Metrics Tool records **one measurement per `runner.py` invocation**.
 
-**one GMT run per (image, num_requests)** — orchestrated by **`scripts/run_beam_gmt_http.sh`**.
+**Single orchestrator:** **`scripts/run_beam_gmt_http.sh`**
 
-### All 13 loads in **one** measurement (same containers)
+| Mode | Flag | Meaning |
+|------|------|--------|
+| **Separate** | *(default)* | One GMT run per **(image × load)** — like BEAM’s one CSV row per count. **`usage_scenario.yml`**. |
+| **Together** | **`--together`** · **`--all-in-one`** · **`--altogether`** | One GMT run per **image**; loads run in sequence in `loadgen` (`gmt_http_load.py --sweep`). **`usage_scenario_full_sweep.yml`**. Fewer jobs (e.g. hosted quota). |
 
-Yes. You can run the full BEAM count list **inside the same `loadgen` container** and still use **one** `runner.py` invocation — useful when a **hosted quota** counts jobs, not HTTP rounds.
+The same **`-c`**, **`-l`**, **`--quick`**, **`--static-only`**, **`--dynamic-only`**, **`--dry-run`**, **`--continue-on-error`** apply in both modes. Default image list when you omit **`-c`**: **`BEAM_GMT_HTTP_PRESET_CONTAINERS`** in **`scripts/beam_gmt_http_constants.sh`**, else discovery under **`BEAM_ROOT`**.
 
-- **`tools/gmt_http_load.py --sweep`** — waits for HTTP 200 **once**, then runs the 13 counts **in order** (same tuple as `scripts/beam_gmt_http_constants.sh`).
-- Scenario file: **`usage_scenario_full_sweep.yml`** (internally passes the container image and optional extra CLI for `gmt_http_load.py` — you normally only use **`run_local_full_sweep.sh`** or the hosted variable form in [CLUSTER_AND_GITHUB.md](CLUSTER_AND_GITHUB.md)).
+**Together** tradeoff: loads are **back-to-back** (shared thermal state). For stricter isolation, use **separate** mode.
 
-**Tradeoffs vs 13 separate GMT runs:** loads are **back-to-back** in one session (shared thermal state, no cool-down between “official” runs). Energy and latency are still usable for exploration or hosted sanity checks; for paper-grade isolation, prefer **`run_beam_gmt_http.sh`** (one run per count).
-
-### `run_local_full_sweep.sh` — three knobs
-
-There are **no extra environment variables** you must learn for daily use. Everything is flags, plus **preset image lists at the top of the script**.
-
-| Knob | Meaning |
-|------|--------|
-| **Containers** | **`-c NAME`** (repeatable) = only these images. **No `-c`** = use **`FULL_SWEEP_STATIC_CONTAINERS`** and **`FULL_SWEEP_DYNAMIC_CONTAINERS`** defined at the top of **`scripts/run_local_full_sweep.sh`** (edit that file to change the default list). |
-| **Workload** | **`-l N`** (repeatable) = only these request counts, in order. **No `-l`** = full BEAM sweep **13** steps (**100** through **80000**). |
-| **Static / dynamic** | **`--scope all`** (default) = static preset list, then dynamic preset list. **`--scope static`** / **`--scope dynamic`** = only that half of the presets. **Ignored if you passed `-c`.** |
-
-Optional debugging only: **`--dry-run`**, **`--continue-on-error`**.
-
-Logs: `logs/gmt_beam_full_sweep_<timestamp>.log`
-
-Examples:
+**`scripts/run_local_full_sweep.sh`** remains as a thin wrapper (**`run_beam_gmt_http.sh --together`**) and maps legacy **`--scope static|dynamic|all`** to **`--static-only` / `--dynamic-only`**.
 
 ```bash
-cd /path/to/beam-gmt-benchmarks
+# Separate (13 runs for one image, full list)
+./scripts/run_beam_gmt_http.sh -c st-erlang-index-27
 
-# One container by name, all 13 load steps in one GMT run:
-./scripts/run_local_full_sweep.sh -c st-erlang-index-27
-
-# Default presets in the script (static list); full 13 steps:
-./scripts/run_local_full_sweep.sh --scope static
-
-# One container, only two load sizes:
-./scripts/run_local_full_sweep.sh -c st-erlang-index-27 -l 100 -l 1000
+# Together (1 run, chained loads)
+./scripts/run_beam_gmt_http.sh --together -c st-erlang-index-27
 ```
 
-Equivalent manual `runner.py` (full default sweep; empty sweep extra):
+Logs for both: **`logs/gmt_beam_http_<timestamp>.log`**
 
-```bash
-cd "${BEAM_GMT_BENCHMARKS_ROOT}"
-"${GMT_PYTHON:-${GMT_ROOT}/.venv/bin/python3}" "${GMT_ROOT}/runner.py" \
-  --uri "${BEAM_GMT_BENCHMARKS_ROOT}" \
-  --filename usage_scenario_full_sweep.yml \
-  --name "BEAM-HTTP-full-sweep-st-erlang-index-27" \
-  --variable "__GMT_VAR_BEAM_IMAGE__=st-erlang-index-27" \
-  --variable "__GMT_VAR_SWEEP_EXTRA__="
-```
+Hosted / manual **`runner.py`** for together mode: [CLUSTER_AND_GITHUB.md](CLUSTER_AND_GITHUB.md) (`__GMT_VAR_BEAM_IMAGE__`, `__GMT_VAR_SWEEP_EXTRA__`).
 
 ### Erlang vs Elixir (static `index` — comparable pair)
 
@@ -92,19 +65,24 @@ cd /path/to/beam-gmt-benchmarks
 ./scripts/run_beam_gmt_http.sh -c st-elixir-index-1-16
 ```
 
-**B — one GMT measurement** (all 13 loads chained in `loadgen`; same style as full sweep for Erlang):
+**B — one GMT measurement** (all loads chained in `loadgen`):
 
 ```bash
-./scripts/run_local_full_sweep.sh -c st-elixir-index-1-16
+./scripts/run_beam_gmt_http.sh --together -c st-elixir-index-1-16
 ```
 
 Run the same pair of commands with `-c st-erlang-index-27` to collect Erlang numbers for comparison. Expect **13 stats IDs** for (A) vs **one stats ID** per image for (B).
 
 ## Main script: `run_beam_gmt_http.sh`
 
+Run **`run_beam_gmt_http.sh --help`** for the full flag list.
+
 | Invocation | Behaviour |
 |------------|-----------|
-| *(no arguments)* | Discover **all** images under `benchmarks/static` **and** `benchmarks/dynamic`, run **full** 13-count list per image. |
+| *(default, no mode flag)* | **Separate** measurements: one GMT run per (image × load). |
+| `--together` (or `--all-in-one` / `--altogether`) | **Together**: one GMT run per image, chain loads with **`--sweep`**. |
+| `--separate` | Force separate mode if you want to be explicit. |
+| *(no arguments)* | Discover **all** images under `benchmarks/static` **and** `benchmarks/dynamic`, run full count list per image (13 by default in each mode). |
 | `--static-only` / `--dynamic-only` | Restrict discovery to one tree. |
 | `-c NAME` / `--container NAME` | Run only named image(s) (repeatable). No discovery; **`BEAM_ROOT` not required**. |
 | `-l N` / `--load N` | Use only these request counts (repeatable). Cannot mix with `--quick` / `--super-quick`. |
@@ -133,6 +111,9 @@ Logs: `logs/gmt_beam_http_<timestamp>.log`
 
 # Static discovery only, super-quick
 ./scripts/run_beam_gmt_http.sh --static-only --super-quick
+
+# One image, chained quick counts (single GMT run)
+./scripts/run_beam_gmt_http.sh --together -c st-erlang-index-27 --quick
 ```
 
 ### Legacy wrapper
@@ -149,7 +130,7 @@ Logs: `logs/gmt_beam_http_<timestamp>.log`
 
 ## Operational cost
 
-Full runs scale as **`containers × request_counts`**. A dry-run header prints `Total GMT runs:` before you commit to real measurements.
+**Separate** mode: cost scales as **`containers × request_counts`**. **Together** mode: **`containers`** only (each run still executes every selected count in one go). A dry-run header prints **`Total GMT runs:`** first.
 
 ## WebSocket
 
