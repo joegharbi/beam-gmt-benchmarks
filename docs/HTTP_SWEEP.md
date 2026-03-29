@@ -1,14 +1,49 @@
-# HTTP request-count sweep (parity with BEAM)
+# HTTP orchestration (BEAM → GMT)
 
-In **BEAM-web-server-benchmarks**, static and dynamic HTTP benchmarks use a fixed list of `--num_requests` values per container. The full list is the same 13 points from **100** through **80000** (see `scripts/run_benchmarks.sh`: `full_http_requests`). Quick modes use three counts or one count.
+In **BEAM-web-server-benchmarks**, static and dynamic HTTP benchmarks use a fixed list of `--num_requests` values per container. The full list is 13 points from **100** through **80000** (`scripts/run_benchmarks.sh`: `full_http_requests`).
 
-Green Metrics Tool does **not** append multiple load points into one CSV row inside a single scenario file. Each `runner.py` run is one **measurement** (one lifecycle, one row in GMT’s database / one stats page). Parity with BEAM is therefore:
+Green Metrics Tool records **one measurement per `runner.py` invocation**. Parity with BEAM is:
 
-**one GMT run per (image, num_requests)** — implemented by `scripts/run_gmt_http_sweep.sh`.
+**one GMT run per (image, num_requests)** — orchestrated by **`scripts/run_beam_gmt_http.sh`**.
 
-## Is it hard?
+## Main script: `run_beam_gmt_http.sh`
 
-No. It is **orchestration only**: the same `usage_scenario.yml` and variables as a single run, repeated in a loop. The cost is **operational**: full runs are slow and multiply by `containers × request_counts` (e.g. 20 images × 13 counts = 260 separate GMT measurements for a full sweep).
+| Invocation | Behaviour |
+|------------|-----------|
+| *(no arguments)* | Discover **all** images under `benchmarks/static` **and** `benchmarks/dynamic`, run **full** 13-count list per image. |
+| `--static-only` / `--dynamic-only` | Restrict discovery to one tree. |
+| `-c NAME` / `--container NAME` | Run only named image(s) (repeatable). No discovery; **`BEAM_ROOT` not required**. |
+| `-l N` / `--load N` | Use only these request counts (repeatable). Cannot mix with `--quick` / `--super-quick`. |
+| `--quick` / `--super-quick` | Three counts or one count (same as BEAM quick modes). |
+| `--dry-run` | Print `runner.py` commands (also **`GMT_SWEEP_DRY_RUN=1`**). |
+| `--continue-on-error` | Keep going after a failed run (**`GMT_SWEEP_CONTINUE_ON_ERROR=1`**). |
+
+Logs: `logs/gmt_beam_http_<timestamp>.log`
+
+### Constants and preset list
+
+- **`scripts/beam_gmt_http_constants.sh`** — count arrays and optional **`BEAM_GMT_HTTP_PRESET_CONTAINERS`**.  
+  If that array is **non-empty** and you do **not** pass `-c`, those names are used instead of filesystem discovery (ordered subset for a study).
+
+### Examples
+
+```bash
+# Full static + dynamic × full loads (very many GMT runs — validate with --dry-run first)
+./scripts/run_beam_gmt_http.sh --dry-run | tail -5
+
+# Single container, single load (good smoke test)
+./scripts/run_beam_gmt_http.sh -c st-erlang-index-27 -l 100
+
+# Several containers, BEAM “quick” counts
+./scripts/run_beam_gmt_http.sh -c st-erlang-index-27 -c st-erlang-cowboy-27 --quick
+
+# Static discovery only, super-quick
+./scripts/run_beam_gmt_http.sh --static-only --super-quick
+```
+
+### Legacy wrapper
+
+`scripts/run_gmt_http_sweep.sh` forwards to `run_beam_gmt_http.sh` (old `static` / `dynamic` / `all` / bare image names). Prefer the new script and flags.
 
 ## Request-count presets (aligned with BEAM)
 
@@ -18,48 +53,26 @@ No. It is **orchestration only**: the same `usage_scenario.yml` and variables as
 | `--quick` | `1000 5000 10000` |
 | `--super-quick` | `1000` |
 
-## Examples
+## Operational cost
 
-Discover all **static** containers from your BEAM repo and run the **full** sweep (build all images first). With the default sibling layout, **BEAM_ROOT** is auto-detected; otherwise set it in `env.local` ([PATHS_AND_ENV.md](PATHS_AND_ENV.md)).
-
-```bash
-./scripts/run_gmt_http_sweep.sh static
-```
-
-All **dynamic** containers, quick counts:
-
-```bash
-./scripts/run_gmt_http_sweep.sh dynamic --quick
-```
-
-Static **and** dynamic (warning: very many runs):
-
-```bash
-./scripts/run_gmt_http_sweep.sh all --quick
-```
-
-Explicit images only (no `BEAM_ROOT`):
-
-```bash
-./scripts/run_gmt_http_sweep.sh st-erlang-index-27 st-erlang-cowboy-27
-```
-
-Dry run (print `runner.py` invocations):
-
-```bash
-GMT_SWEEP_DRY_RUN=1 ./scripts/run_gmt_http_sweep.sh st-erlang-index-27 --super-quick
-```
-
-Continue after a failed measurement:
-
-```bash
-GMT_SWEEP_CONTINUE_ON_ERROR=1 ./scripts/run_gmt_http_sweep.sh static --quick
-```
+Full runs scale as **`containers × request_counts`**. A dry-run header prints `Total GMT runs:` before you commit to real measurements.
 
 ## WebSocket
 
-`ws-*` benchmarks in BEAM use `measure_websocket.py`, not HTTP GET counts. They are **not** included in this sweep. Add a separate GMT scenario and script when you need WebSocket parity.
+`ws-*` workloads are **not** included. Add a separate scenario and tooling later.
 
 ## Comparing to BEAM CSVs
 
-BEAM writes **one CSV per container** with **one row per request count**. GMT gives **one measurement ID per (image, count)**. To compare numerically you export or query GMT metrics per run and join on image name + `n` (encoded in the run name: `BEAM-HTTP-<image>-n<count>`).
+BEAM: one CSV per container, one row per request count. GMT: one measurement ID per `(image, count)`; run names look like `BEAM-HTTP-<image>-n<count>`.
+
+## First real measurement (validation)
+
+`runner.py` may invoke **`sudo`** (hardware / system checks). Run from a terminal where sudo works, or follow GMT’s install notes for non-interactive use. If sudo fails without a TTY, the run can stop early — fix sudo/SSH before expecting saved results in the GMT UI.
+
+Single-container check:
+
+```bash
+./scripts/run_beam_gmt_http.sh -c st-erlang-index-27 -l 1000
+```
+
+Then open your GMT **`stats.html`** (or API) and locate the run name **`BEAM-HTTP-st-erlang-index-27-n1000`**.

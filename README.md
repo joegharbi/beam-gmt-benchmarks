@@ -9,8 +9,10 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
 | `usage_scenario.yml` | Root scenario GMT expects; one **beam-server** + **loadgen**; image and request count are GMT variables. |
 | `tools/gmt_http_load.py` | Load generator (BEAM-comparable: env-based health wait, then `ThreadPoolExecutor` GETs). |
 | `scripts/_lib_env.sh` | Shared path setup: auto-finds GMT + BEAM sibling checkouts, optional `env.local` overrides. |
-| `scripts/run_local_production.sh` | **Production-style** local run: no `--dev-*`, no `--skip-optimizations`, no `--skip-download-dependencies`. |
-| `scripts/run_gmt_http_sweep.sh` | **BEAM-style sweep**: same HTTP request-count lists as BEAM (`100`…`80000`, plus `--quick` / `--super-quick`); one GMT run per (image × count). |
+| `scripts/run_local_production.sh` | **Single** production-style GMT run (default image + load via env vars). |
+| `scripts/run_beam_gmt_http.sh` | **HTTP orchestrator**: default = all BEAM static+dynamic × full loads; optional `-c` / `-l` / `--quick` / scope flags. |
+| `scripts/beam_gmt_http_constants.sh` | Preset request-count arrays and optional **`BEAM_GMT_HTTP_PRESET_CONTAINERS`**. |
+| `scripts/run_gmt_http_sweep.sh` | Legacy wrapper → `run_beam_gmt_http.sh`. |
 | `docs/LOCAL_PRODUCTION.md` | Full local checklist, env vars, troubleshooting. |
 | `docs/HTTP_SWEEP.md` | Why sweeps are separate GMT runs; examples; `GMT_SWEEP_*` env vars. |
 | `docs/CLUSTER_AND_GITHUB.md` | Hosted service, cluster machine types, image registry notes. |
@@ -32,14 +34,15 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
 
 Defaults: `GMT_VAR_BEAM_IMAGE=st-erlang-index-27`, `GMT_VAR_NUM_REQUESTS=10000`. Override with environment variables before calling the script.
 
-### Full static/dynamic sweep (like BEAM `make run`)
+### Orchestrated HTTP measurements (like BEAM `make run`)
 
-BEAM runs 13 request counts per HTTP container by default. Here, each count is a **separate** GMT measurement. See [docs/HTTP_SWEEP.md](docs/HTTP_SWEEP.md).
+See [docs/HTTP_SWEEP.md](docs/HTTP_SWEEP.md). Quick examples:
 
 ```bash
-./scripts/run_gmt_http_sweep.sh static              # all static images × full count list
-./scripts/run_gmt_http_sweep.sh dynamic --quick     # all dynamic × three counts
-./scripts/run_gmt_http_sweep.sh st-erlang-index-27  # one image × full count list (BEAM discovery not used)
+./scripts/run_beam_gmt_http.sh --dry-run | tail -3   # preview total runs
+./scripts/run_beam_gmt_http.sh                       # default: all static + dynamic × 13 loads
+./scripts/run_beam_gmt_http.sh --static-only --quick
+./scripts/run_beam_gmt_http.sh -c st-erlang-index-27 -l 1000
 ```
 
 ## GMT variables (scenario)
