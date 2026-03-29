@@ -1,21 +1,10 @@
-# Seeing energy (joules / power) in GMT
+# Local energy (RAPL) and reading concrete values
 
-## Why you only see CPU utilization
+## 1. Enable RAPL in GMT
 
-GMT plots whatever **metric providers** are enabled in **`green-metrics-tool/config.yml`** under `measurement.metric_providers.linux`.
-
-A typical dev config has only:
-
-- `CpuUtilizationProcfsSystemProvider`
-
-That gives **CPU %**, not **energy**. RAPL and PSU providers are **commented out** by default.
-
-## Next step on your own Linux machine: RAPL (most common)
-
-If your CPU exposes **Intel RAPL** (many Intel/AMD laptops and desktops), enable the **component** MSR providers in `config.yml` (same names as in `config.yml.example`):
+In **`green-metrics-tool/config.yml`**, under `measurement.metric_providers.linux`, keep CPU utilization and **uncomment** the two RAPL **component** providers:
 
 ```yaml
-    linux:
       cpu.utilization.procfs.system.provider.CpuUtilizationProcfsSystemProvider:
         sampling_rate: 99
       cpu.energy.rapl.msr.component.provider.CpuEnergyRaplMsrComponentProvider:
@@ -24,44 +13,60 @@ If your CPU exposes **Intel RAPL** (many Intel/AMD laptops and desktops), enable
         sampling_rate: 99
 ```
 
-Then run a measurement again. In the console you should see lines like:
+On the next run the log should include:
 
-`Importing CpuEnergyRaplMsrComponentProvider`
+- `Importing CpuEnergyRaplMsrComponentProvider`
+- `Importing MemoryEnergyRaplMsrComponentProvider`
 
-**Requirements (typical):**
+## 2. Git checkout: `hardware_info_root.py`
 
-- `msr` kernel module loaded (`sudo modprobe msr` if needed).
-- Access to MSRs so the provider can read RAPL counters (GMT often runs parts of the flow with **`sudo`**; if a provider fails, check GMT’s provider docs and dmesg).
-- RAPL may be limited or absent on some VMs or locked-down firmware.
+RAPL providers call a sudo helper to verify RAPL energy filtering. A **full GMT install** puts that script under `/usr/local/bin/green-metrics-tool/`. On a **git clone**, the repo should include **`hardware_info_root.py` at the root of `green-metrics-tool/`**, and `lib/utils.py` resolves it automatically. You can override with **`GMT_HARDWARE_INFO_ROOT`** if needed.
 
-**Quick checks on the host:**
-
-```bash
-ls /sys/class/powercap/intel-rapl 2>/dev/null || ls /sys/devices/virtual/powercap 2>/dev/null
-```
-
-If those paths exist, RAPL is often available at the OS level.
-
-Official detail: [Metric providers](https://docs.green-coding.io/docs/measuring/metric-providers/) and installation overview linked from there.
-
-## Cgroup providers (optional, not a full substitute for joules)
-
-Uncommenting **cgroup** CPU/memory/network/disk providers helps **attribute resource use to containers**. They complement RAPL; they do not replace **package/CPU energy** counters if your goal is joules at the hardware counter level.
-
-## Lab / wall power (PSU)
-
-Providers such as **MCP / IPMI / Gude** need specific hardware. That is what Green Coding’s **measurement cluster** machines often use; see [Measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/).
-
-## After it works
-
-Re-run:
+## 3. Host checklist
 
 ```bash
-./scripts/run_beam_gmt_http.sh -c st-erlang-index-27 -l 1000
+./scripts/check_rapl_ready.sh
 ```
 
-Open the same **stats** URL; energy series should appear under the metric provider names GMT uses (e.g. RAPL-related keys in the charts / raw metrics).
+Install **`msr-tools`** (Debian/Ubuntu: `sudo apt install msr-tools`) so `/usr/sbin/rdmsr` exists. Load **`msr`**: `sudo modprobe msr`.
+
+## 4. One Erlang container × all 13 BEAM HTTP loads
+
+Omit **`-l`**: the orchestrator uses the full list  
+`100 1000 5000 8000 10000 15000 20000 30000 40000 50000 60000 70000 80000`.
+
+```bash
+cd /path/to/beam-gmt-benchmarks
+./scripts/run_beam_gmt_http.sh -c st-erlang-index-27
+```
+
+That runs **13** separate GMT measurements (one per load). Build the image first (`make build` in BEAM-web-server-benchmarks or `docker build -t st-erlang-index-27 …`).
+
+Options:
+
+- **`GMT_SWEEP_CONTINUE_ON_ERROR=1`** — continue if one load fails.
+- **`--dry-run`** — print all 13 `runner.py` commands without running.
+
+## 5. Where the numbers appear in the UI
+
+Open each run’s **`stats.html?id=…`** link from the console. In the **Energy metrics** / phase charts, look for series tied to:
+
+- **`cpu_energy_rapl_msr_component`** (microjoules per sample in provider data)
+- **`memory_energy_rapl_msr_component`**
+
+Exact chart labels follow GMT’s frontend naming; if a phase chart is empty, use the **Measurement** / raw metrics tabs for that run to confirm samples were stored.
+
+## 6. Cgroup providers (optional)
+
+Uncomment cgroup CPU/memory/IO providers in the same `config.yml` section if you want **per-container** utilization alongside RAPL. They do not replace package-level joules from RAPL.
+
+## 7. If RAPL still fails
+
+- VM / cloud instance: MSRs often blocked → use [measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/) for PSU-based energy.
+- Errors mentioning **`rdmsr`** or **MSR**: install `msr-tools`, run with sudo working, check firmware/BIOS.
+
+Official: [Metric providers](https://docs.green-coding.io/docs/measuring/metric-providers/).
 
 ## Relation to BEAM + Scaphandre
 
-Your **BEAM-web-server-benchmarks** stack may use **Scaphandre** on the host. **GMT** uses its **own** providers from `config.yml`. For comparable narratives, document both: “BEAM = Scaphandre attribution; GMT = RAPL/PSU as configured.”
+BEAM may use **Scaphandre** on the host; GMT uses **`config.yml` providers**. Compare plots only when you are clear which sensor stack each number comes from.

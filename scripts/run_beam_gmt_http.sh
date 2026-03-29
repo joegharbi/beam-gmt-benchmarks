@@ -25,7 +25,9 @@ Run BEAM HTTP server images through GMT (one runner.py invocation per image × l
 
 Options:
   -c, --container NAME   Only this Docker image (repeatable). Skips discovery; BEAM_ROOT not needed.
-  -l, --load N           Request count (repeatable). Cannot be combined with --quick / --super-quick.
+                         Example: -c st-erlang-index-27 with no -l runs all 13 BEAM loads (100…80000).
+  -l, --load N           Request count (repeatable). Omit to use full / quick / super-quick preset.
+                         Cannot combine --load with --quick / --super-quick.
       --quick            Three counts: 1000, 5000, 10000
       --super-quick      Single count: 1000
       --static-only      Discover only benchmarks/static (ignored if -c is used)
