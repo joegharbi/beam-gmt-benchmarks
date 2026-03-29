@@ -6,9 +6,10 @@
 name: BEAM static HTTP (full sweep in one measurement)
 author: beam-gmt-benchmarks
 description: >
-  Same layout as the default scenario, but the load step runs all BEAM full_http_requests
-  counts in one flow command. Produces one stats.html run with one Runtime phase containing
-  back-to-back load bursts; compare carefully to per-load runs for thermal and isolation.
+  Same layout as the default scenario, but the load step runs BEAM HTTP load sizes in one flow command
+  (default: full 13-point list; optional __GMT_VAR_SWEEP_EXTRA__ e.g. --counts 100,1000).
+  Produces one stats.html run with one Runtime phase containing back-to-back load bursts;
+  compare carefully to per-load runs for thermal and isolation.
 
 services:
   beam-server:
@@ -23,9 +24,9 @@ services:
       - command: apk add --no-cache python3 py3-requests
 
 flow:
-  - name: HTTP workload (13 sequential loads)
+  - name: HTTP workload (sequential loads in one measurement)
     container: loadgen
     commands:
       - type: console
         shell: sh
-        command: python3 /tmp/repo/tools/gmt_http_load.py --url http://beam-server:80/ --sweep
+        command: python3 /tmp/repo/tools/gmt_http_load.py --url http://beam-server:80/ --sweep __GMT_VAR_SWEEP_EXTRA__

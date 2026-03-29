@@ -6,7 +6,7 @@ This repository is structured so you can **push it to GitHub** (or any Git host)
 
 Per [Measuring with hosted service](https://docs.green-coding.io/docs/measuring/measuring-service/) and GMT conventions:
 
-- A **`usage_scenario.yml`** at the repository root (this repo provides one). For **one hosted job** that still exercises all 13 BEAM HTTP loads, use **`usage_scenario_full_sweep.yml`** and only set **`__GMT_VAR_BEAM_IMAGE__`** (see [HTTP_SWEEP.md](HTTP_SWEEP.md)).
+- A **`usage_scenario.yml`** at the repository root (this repo provides one). For **one hosted job** that runs the **full in-container sweep**, use **`usage_scenario_full_sweep.yml`** and set **`__GMT_VAR_BEAM_IMAGE__`** plus **`__GMT_VAR_SWEEP_EXTRA__`** (empty string for the default 13-point list; or e.g. `--counts 100,1000` — see [HTTP_SWEEP.md](HTTP_SWEEP.md)).
 - **Containerized** workloads: the scenario references Docker **images**. The cluster runners must be able to **pull** those images (or build them from Dockerfiles in the repo—depending on how you integrate with GMT; the common case is a public registry image).
 
 This repo does **not** embed the full BEAM benchmark Dockerfiles; it assumes the **image name** you pass (e.g. `st-erlang-index-27`) exists on the machine that executes the scenario. For hosted runs you typically:
@@ -25,7 +25,8 @@ Supply your Git repository URL, branch, and—if the UI supports it—the **usag
 | Variable | Example | Meaning |
 |----------|---------|---------|
 | `__GMT_VAR_BEAM_IMAGE__` | `ghcr.io/your-org/st-erlang-index-27:v1` | Server image to measure |
-| `__GMT_VAR_NUM_REQUESTS__` | `10000` | Total parallel GETs (same knob as BEAM HTTP runs) |
+| `__GMT_VAR_NUM_REQUESTS__` | `10000` | Total parallel GETs (`usage_scenario.yml` single-load scenario) |
+| `__GMT_VAR_SWEEP_EXTRA__` | *(empty)* or `--counts 100,1000` | **`usage_scenario_full_sweep.yml` only**: append to `gmt_http_load.py --sweep`; empty = full BEAM list |
 
 If the hosted form does not expose variables, duplicate `usage_scenario.yml` on a branch with literal `image:` and `num_requests` values, or open a scenario file per image (see [ADDING_SCENARIOS.md](ADDING_SCENARIOS.md)).
 

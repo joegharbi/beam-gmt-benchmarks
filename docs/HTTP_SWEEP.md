@@ -11,32 +11,49 @@ Green Metrics Tool records **one measurement per `runner.py` invocation**. Parit
 Yes. You can run the full BEAM count list **inside the same `loadgen` container** and still use **one** `runner.py` invocation — useful when a **hosted quota** counts jobs, not HTTP rounds.
 
 - **`tools/gmt_http_load.py --sweep`** — waits for HTTP 200 **once**, then runs the 13 counts **in order** (same tuple as `scripts/beam_gmt_http_constants.sh`).
-- Scenario file: **`usage_scenario_full_sweep.yml`** (only **`__GMT_VAR_BEAM_IMAGE__`** is required; no `__GMT_VAR_NUM_REQUESTS__`).
+- Scenario file: **`usage_scenario_full_sweep.yml`**: **`__GMT_VAR_BEAM_IMAGE__`** and **`__GMT_VAR_SWEEP_EXTRA__`** (empty for default full list, or e.g. `--counts 100,1000`).
 
 **Tradeoffs vs 13 separate GMT runs:** loads are **back-to-back** in one session (shared thermal state, no cool-down between “official” runs). Energy and latency are still usable for exploration or hosted sanity checks; for paper-grade isolation, prefer **`run_beam_gmt_http.sh`** (one run per count).
 
-**One command** (from this repo; paths auto-detected like `run_local_production.sh`):
+### `run_local_full_sweep.sh`
+
+Same discovery rules as **`run_beam_gmt_http.sh`** (see [beam_gmt_http_constants.sh](../scripts/beam_gmt_http_constants.sh) **`BEAM_GMT_HTTP_PRESET_CONTAINERS`**):
+
+| Invocation | Behaviour |
+|------------|-----------|
+| *(no args)* | All images under **`benchmarks/static`** + **`benchmarks/dynamic`**; **one** GMT run per image; each run uses the **full** 13-count sweep. |
+| `--static-only` / `--dynamic-only` | Restrict discovery (ignored if `-c` is used). |
+| `-c NAME` | Only this image (repeatable). **No** `BEAM_ROOT` required. |
+| `-l N` | Add **N** to the sweep (repeatable). If any `-l` is given, only those counts run (order preserved). If omitted, default full BEAM list. |
+| `--dry-run` / `--continue-on-error` | Same as `run_beam_gmt_http.sh`. |
+
+Logs: `logs/gmt_beam_full_sweep_<timestamp>.log`
+
+Examples:
 
 ```bash
 cd /path/to/beam-gmt-benchmarks
-./scripts/run_local_full_sweep.sh
+
+# Only st-erlang-index-27, full 13 inputs (one GMT measurement):
+./scripts/run_local_full_sweep.sh -c st-erlang-index-27
+
+# All static HTTP images only:
+./scripts/run_local_full_sweep.sh --static-only
+
+# One image, custom subset of counts:
+./scripts/run_local_full_sweep.sh -c st-erlang-index-27 -l 100 -l 1000
 ```
 
-Default image is **`st-erlang-index-27`**. Override:
-
-```bash
-GMT_VAR_BEAM_IMAGE=st-erlang-cowboy-27 GMT_RUN_NAME="My sweep" ./scripts/run_local_full_sweep.sh
-```
-
-Equivalent manual `runner.py` invocation:
+Equivalent manual `runner.py` (full default sweep; empty sweep extra):
 
 ```bash
 cd "${BEAM_GMT_BENCHMARKS_ROOT}"
 "${GMT_PYTHON:-${GMT_ROOT}/.venv/bin/python3}" "${GMT_ROOT}/runner.py" \
   --uri "${BEAM_GMT_BENCHMARKS_ROOT}" \
   --filename usage_scenario_full_sweep.yml \
-  --name "BEAM HTTP full sweep (one run)" \
-  --variable "__GMT_VAR_BEAM_IMAGE__=st-erlang-index-27"
+  --name "BEAM-HTTP-full-sweep-st-erlang-index-27" \
+  --variable "__GMT_VAR_BEAM_IMAGE__=st-erlang-index-27" \
+  --variable "__GMT_VAR_SWEEP_EXTRA__="
 ```
 
 ## Main script: `run_beam_gmt_http.sh`

@@ -87,7 +87,13 @@ def main() -> None:
     parser.add_argument(
         "--sweep",
         action="store_true",
-        help=f"Run full BEAM HTTP list in one process: {list(BEAM_HTTP_FULL_COUNTS)}. Health wait once, then each count.",
+        help=f"Run BEAM HTTP load list in one process (default: {list(BEAM_HTTP_FULL_COUNTS)}). Health wait once, then each count.",
+    )
+    parser.add_argument(
+        "--counts",
+        default=None,
+        metavar="N,N,...",
+        help="With --sweep only: comma-separated request counts (overrides default full BEAM list).",
     )
     parser.add_argument("--timeout", type=float, default=5.0)
     args = parser.parse_args()
@@ -96,9 +102,23 @@ def main() -> None:
         parser.error("Do not pass --num_requests with --sweep")
     if not args.sweep and args.num_requests is None:
         parser.error("--num_requests is required unless --sweep")
+    if not args.sweep and args.counts is not None:
+        parser.error("--counts is only valid with --sweep")
 
     if args.sweep:
-        for i, n in enumerate(BEAM_HTTP_FULL_COUNTS):
+        if args.counts is not None:
+            parts = [p.strip() for p in args.counts.split(",") if p.strip()]
+            if not parts:
+                parser.error("--counts must list at least one integer")
+            try:
+                counts = tuple(int(p) for p in parts)
+            except ValueError:
+                parser.error("--counts must be comma-separated integers")
+            if any(n < 1 for n in counts):
+                parser.error("--counts values must be positive")
+        else:
+            counts = BEAM_HTTP_FULL_COUNTS
+        for i, n in enumerate(counts):
             run_load(args.url, n, args.timeout, skip_health=i > 0)
     else:
         run_load(args.url, args.num_requests, args.timeout, skip_health=False)

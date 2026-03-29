@@ -11,7 +11,7 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
 | `tools/gmt_http_load.py` | Load generator (BEAM-comparable: env-based health wait, then `ThreadPoolExecutor` GETs). |
 | `scripts/_lib_env.sh` | Shared path setup: auto-finds GMT + BEAM sibling checkouts, optional `env.local` overrides. |
 | `scripts/run_local_production.sh` | **Single** production-style GMT run (default image + load via env vars). |
-| `scripts/run_local_full_sweep.sh` | **Single** GMT run with **all 13** BEAM HTTP loads (`usage_scenario_full_sweep.yml`). |
+| `scripts/run_local_full_sweep.sh` | **One** GMT run per image with in-container **--sweep** (`usage_scenario_full_sweep.yml`); default = all static+dynamic images, optional `-c` / scope / `-l`. |
 | `scripts/run_beam_gmt_http.sh` | **HTTP orchestrator**: default = all BEAM static+dynamic × full loads; optional `-c` / `-l` / `--quick` / scope flags. |
 | `scripts/beam_gmt_http_constants.sh` | Preset request-count arrays and optional **`BEAM_GMT_HTTP_PRESET_CONTAINERS`**. |
 | `scripts/run_gmt_http_sweep.sh` | Legacy wrapper → `run_beam_gmt_http.sh`. |
@@ -40,10 +40,14 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
 
 Defaults: `GMT_VAR_BEAM_IMAGE=st-erlang-index-27`, `GMT_VAR_NUM_REQUESTS=10000`. Override with environment variables before calling the script.
 
-**All 13 BEAM loads in one GMT measurement** (one hosted job / one `stats` run — see [HTTP_SWEEP.md](docs/HTTP_SWEEP.md)):
+**Full HTTP sweep in one GMT measurement per image** (`usage_scenario_full_sweep.yml` — see [HTTP_SWEEP.md](docs/HTTP_SWEEP.md)):
 
 ```bash
+# Default: every static + dynamic HTTP image in BEAM, full 13-count sweep each (needs BEAM_ROOT / layout)
 ./scripts/run_local_full_sweep.sh
+
+# Single image (e.g. st-erlang-index-27), full 13 inputs:
+./scripts/run_local_full_sweep.sh -c st-erlang-index-27
 ```
 
 ### Orchestrated HTTP measurements (like BEAM `make run`)
