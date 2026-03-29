@@ -19,6 +19,7 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
 | `docs/ADDING_SCENARIOS.md` | How to add more images following BEAM’s structure. |
 | `env.example` | Optional **`env.local`** template — only if auto-discovery fails. |
 | `docs/PATHS_AND_ENV.md` | Default “sibling folders” layout; overrides when needed. |
+| `docs/ENERGY_METRICS.md` | Enable RAPL (or PSU on cluster) in GMT `config.yml` so stats show energy. |
 
 ## Quick start (local, production-style)
 
