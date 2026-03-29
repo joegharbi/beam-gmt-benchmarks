@@ -164,6 +164,8 @@ LOG="${REPO_ROOT}/logs/gmt_beam_http_$(date +%Y-%m-%d_%H%M%S).log"
 echo "Logging to $LOG"
 exec > >(tee -a "$LOG") 2>&1
 
+beam_gmt_rapl_laptop_hint
+
 # GMT's system check runs `git status` in the *current working directory* (not --uri).
 # If you invoke this script from ~ or another non-repo path, runner.py would see git fail.
 cd "$REPO_ROOT"

@@ -154,6 +154,8 @@ LOG="${REPO_ROOT}/logs/gmt_beam_full_sweep_$(date +%Y-%m-%d_%H%M%S).log"
 echo "Logging to $LOG"
 exec > >(tee -a "$LOG") 2>&1
 
+beam_gmt_rapl_laptop_hint
+
 cd "$REPO_ROOT"
 
 total_runs=${#IMAGES[@]}

@@ -1,5 +1,15 @@
 # HTTP orchestration (BEAM → GMT)
 
+**Local laptop:** if every GMT run stops with **`RAPL energy filtering is active`**, put this in **`env.local`** (copy from `env.example`) or run once per terminal:
+
+```bash
+export GMT_IGNORE_RAPL_ENERGY_FILTERING_CHECK=1
+```
+
+Then rerun `./scripts/run_beam_gmt_http.sh …`. Details: [ENERGY_METRICS.md](ENERGY_METRICS.md).
+
+---
+
 In **BEAM-web-server-benchmarks**, static and dynamic HTTP benchmarks use a fixed list of `--num_requests` values per container. The full list is 13 points from **100** through **80000** (`scripts/run_benchmarks.sh`: `full_http_requests`).
 
 Green Metrics Tool records **one measurement per `runner.py` invocation**. Parity with BEAM is:

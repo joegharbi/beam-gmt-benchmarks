@@ -14,6 +14,8 @@ export GMT_VAR_BEAM_IMAGE="${GMT_VAR_BEAM_IMAGE:-st-erlang-index-27}"
 export GMT_VAR_NUM_REQUESTS="${GMT_VAR_NUM_REQUESTS:-10000}"
 export GMT_RUN_NAME="${GMT_RUN_NAME:-BEAM static HTTP (GMT)}"
 
+beam_gmt_rapl_laptop_hint
+
 cd "$REPO_ROOT"
 if ! git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Warning: $REPO_ROOT is not a git repository. GMT --uri requires a git repo; run: git init && git add -A && git commit -m init" >&2

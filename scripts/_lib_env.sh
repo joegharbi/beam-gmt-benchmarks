@@ -136,3 +136,11 @@ if [[ -z "${BEAM_ROOT:-}" ]]; then
     fi
   fi
 fi
+
+# Called by measurement entrypoints. Laptops often hit MSR 0xBC “energy filtering” → GMT aborts RAPL providers unless this is set.
+beam_gmt_rapl_laptop_hint() {
+  if [[ -n "${GMT_IGNORE_RAPL_ENERGY_FILTERING_CHECK:-}" ]]; then
+    return 0
+  fi
+  echo "beam-gmt-benchmarks: If GMT fails with 'RAPL energy filtering is active', set export GMT_IGNORE_RAPL_ENERGY_FILTERING_CHECK=1 (best: in env.local — see docs/ENERGY_METRICS.md)." >&2
+}
