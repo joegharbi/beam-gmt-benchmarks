@@ -3,6 +3,7 @@
 # Without setuid root, runner.py hits: rdmsr:open: Permission denied
 #
 # Requires: gcc, sudo (for chown root + chmod u+s on the binaries).
+# Only builds gmt-lib.o (not gmt-container-lib.o — that needs libcurl dev headers).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,8 +18,8 @@ for d in "$C_LIB" "$CPU_RAPL" "$MEM_RAPL"; do
   [[ -d "$d" ]] || { echo "Missing directory: $d" >&2; exit 1; }
 done
 
-echo "=== Building lib/c (gmt-lib.o) ==="
-make -C "$C_LIB"
+echo "=== Building lib/c (gmt-lib.o only — RAPL does not need gmt-container-lib / curl) ==="
+make -C "$C_LIB" gmt-lib.o
 
 echo "=== Building CPU RAPL metric-provider-binary (setuid root) ==="
 make -C "$CPU_RAPL"

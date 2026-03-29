@@ -32,7 +32,7 @@ GMT’s RAPL helpers are small C programs (`metric-provider-binary`) that read M
 ./scripts/build_gmt_rapl_providers.sh
 ```
 
-That runs `make` in `green-metrics-tool/lib/c`, then in the CPU and memory RAPL `component/` directories (same as upstream GMT: `chown root:root` + `chmod u+s` on each binary).
+That runs `make gmt-lib.o` in `green-metrics-tool/lib/c` (only what RAPL links — **not** the full `lib/c` default target, which needs `libcurl` headers), then `make` in the CPU and memory RAPL `component/` directories (`chown root:root` + `chmod u+s` on each binary).
 
 Verify:
 
