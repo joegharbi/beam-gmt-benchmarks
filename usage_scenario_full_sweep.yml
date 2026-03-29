@@ -1,0 +1,31 @@
+---
+# One Green Metrics Tool measurement with all 13 BEAM HTTP loads in sequence.
+# Use for hosted quota (single request) or when one run ID must contain the full sweep.
+# Methodology: same server + loadgen containers; loadgen runs tools/gmt_http_load.py --sweep
+# (health wait once, then each count). Not equivalent to 13 independent GMT runs — see docs/HTTP_SWEEP.md.
+name: BEAM static HTTP (full sweep in one measurement)
+author: beam-gmt-benchmarks
+description: >
+  Same layout as the default scenario, but the load step runs all BEAM full_http_requests
+  counts in one flow command. Produces one stats.html run with one Runtime phase containing
+  back-to-back load bursts; compare carefully to per-load runs for thermal and isolation.
+
+services:
+  beam-server:
+    image: __GMT_VAR_BEAM_IMAGE__
+
+  loadgen:
+    image: alpine:3.19
+    folder-destination: /tmp/repo
+    depends_on:
+      - beam-server
+    setup-commands:
+      - command: apk add --no-cache python3 py3-requests
+
+flow:
+  - name: HTTP workload (13 sequential loads)
+    container: loadgen
+    commands:
+      - type: console
+        shell: sh
+        command: python3 /tmp/repo/tools/gmt_http_load.py --url http://beam-server:80/ --sweep

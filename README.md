@@ -7,6 +7,7 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
 | Path | Purpose |
 |------|---------|
 | `usage_scenario.yml` | Root scenario GMT expects; one **beam-server** + **loadgen**; image and request count are GMT variables. |
+| `usage_scenario_full_sweep.yml` | Same services; **one** flow runs all **13** BEAM loads via `gmt_http_load.py --sweep` (one GMT measurement — see [HTTP_SWEEP.md](docs/HTTP_SWEEP.md)). |
 | `tools/gmt_http_load.py` | Load generator (BEAM-comparable: env-based health wait, then `ThreadPoolExecutor` GETs). |
 | `scripts/_lib_env.sh` | Shared path setup: auto-finds GMT + BEAM sibling checkouts, optional `env.local` overrides. |
 | `scripts/run_local_production.sh` | **Single** production-style GMT run (default image + load via env vars). |

@@ -6,7 +6,7 @@ This repository is structured so you can **push it to GitHub** (or any Git host)
 
 Per [Measuring with hosted service](https://docs.green-coding.io/docs/measuring/measuring-service/) and GMT conventions:
 
-- A **`usage_scenario.yml`** at the repository root (this repo provides one).
+- A **`usage_scenario.yml`** at the repository root (this repo provides one). For **one hosted job** that still exercises all 13 BEAM HTTP loads, use **`usage_scenario_full_sweep.yml`** and only set **`__GMT_VAR_BEAM_IMAGE__`** (see [HTTP_SWEEP.md](HTTP_SWEEP.md)).
 - **Containerized** workloads: the scenario references Docker **images**. The cluster runners must be able to **pull** those images (or build them from Dockerfiles in the repo—depending on how you integrate with GMT; the common case is a public registry image).
 
 This repo does **not** embed the full BEAM benchmark Dockerfiles; it assumes the **image name** you pass (e.g. `st-erlang-index-27`) exists on the machine that executes the scenario. For hosted runs you typically:

@@ -6,6 +6,26 @@ Green Metrics Tool records **one measurement per `runner.py` invocation**. Parit
 
 **one GMT run per (image, num_requests)** — orchestrated by **`scripts/run_beam_gmt_http.sh`**.
 
+### All 13 loads in **one** measurement (same containers)
+
+Yes. You can run the full BEAM count list **inside the same `loadgen` container** and still use **one** `runner.py` invocation — useful when a **hosted quota** counts jobs, not HTTP rounds.
+
+- **`tools/gmt_http_load.py --sweep`** — waits for HTTP 200 **once**, then runs the 13 counts **in order** (same tuple as `scripts/beam_gmt_http_constants.sh`).
+- Scenario file: **`usage_scenario_full_sweep.yml`** (only **`__GMT_VAR_BEAM_IMAGE__`** is required; no `__GMT_VAR_NUM_REQUESTS__`).
+
+**Tradeoffs vs 13 separate GMT runs:** loads are **back-to-back** in one session (shared thermal state, no cool-down between “official” runs). Energy and latency are still usable for exploration or hosted sanity checks; for paper-grade isolation, prefer **`run_beam_gmt_http.sh`** (one run per count).
+
+Manual run:
+
+```bash
+cd "${BEAM_GMT_BENCHMARKS_ROOT}"
+"${GMT_PYTHON:-${GMT_ROOT}/.venv/bin/python3}" "${GMT_ROOT}/runner.py" \
+  --uri "${BEAM_GMT_BENCHMARKS_ROOT}" \
+  --filename usage_scenario_full_sweep.yml \
+  --name "BEAM HTTP full sweep (one run)" \
+  --variable "__GMT_VAR_BEAM_IMAGE__=st-erlang-index-27"
+```
+
 ## Main script: `run_beam_gmt_http.sh`
 
 | Invocation | Behaviour |
