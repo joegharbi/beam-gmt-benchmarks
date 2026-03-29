@@ -1,6 +1,6 @@
 # GitHub layout and Green Coding measurement cluster
 
-This repository is structured so you can **push it to GitHub** (or any Git host) and either run it locally (see [LOCAL_PRODUCTION.md](LOCAL_PRODUCTION.md)) or use **Green Coding’s hosted infrastructure**. On your own machine, paths to GMT and this repo are configured via **`GMT_ROOT`** / **`BEAM_GMT_BENCHMARKS_ROOT`** (see [PATHS_AND_ENV.md](PATHS_AND_ENV.md)), not hardcoded locations.
+This repository is structured so you can **push it to GitHub** (or any Git host) and either run it locally (see [LOCAL_PRODUCTION.md](LOCAL_PRODUCTION.md)) or use **Green Coding’s hosted infrastructure**. On your own machine, paths are **auto-detected** when GMT and BEAM sit next to this repo; optional **`GMT_ROOT`** / **`BEAM_ROOT`** overrides are in [PATHS_AND_ENV.md](PATHS_AND_ENV.md).
 
 ## What must be in the repo
 

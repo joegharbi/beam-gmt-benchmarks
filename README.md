@@ -8,21 +8,21 @@ Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with 
 |------|---------|
 | `usage_scenario.yml` | Root scenario GMT expects; one **beam-server** + **loadgen**; image and request count are GMT variables. |
 | `tools/gmt_http_load.py` | Load generator (BEAM-comparable: env-based health wait, then `ThreadPoolExecutor` GETs). |
-| `scripts/_lib_env.sh` | Shared path setup: loads `env.local` / `BEAM_GMT_ENV_FILE`, sets **`GMT_ROOT`**, **`BEAM_GMT_BENCHMARKS_ROOT`**, **`RUNNER`**. |
+| `scripts/_lib_env.sh` | Shared path setup: auto-finds GMT + BEAM sibling checkouts, optional `env.local` overrides. |
 | `scripts/run_local_production.sh` | **Production-style** local run: no `--dev-*`, no `--skip-optimizations`, no `--skip-download-dependencies`. |
 | `scripts/run_gmt_http_sweep.sh` | **BEAM-style sweep**: same HTTP request-count lists as BEAM (`100`…`80000`, plus `--quick` / `--super-quick`); one GMT run per (image × count). |
 | `docs/LOCAL_PRODUCTION.md` | Full local checklist, env vars, troubleshooting. |
 | `docs/HTTP_SWEEP.md` | Why sweeps are separate GMT runs; examples; `GMT_SWEEP_*` env vars. |
 | `docs/CLUSTER_AND_GITHUB.md` | Hosted service, cluster machine types, image registry notes. |
 | `docs/ADDING_SCENARIOS.md` | How to add more images following BEAM’s structure. |
-| `env.example` | Template for `env.local` — define **`GMT_ROOT`** and optional **`BEAM_ROOT`** / **`BEAM_GMT_BENCHMARKS_ROOT`**. |
-| `docs/PATHS_AND_ENV.md` | How roots are resolved; moving GMT or this repo without editing scripts. |
+| `env.example` | Optional **`env.local`** template — only if auto-discovery fails. |
+| `docs/PATHS_AND_ENV.md` | Default “sibling folders” layout; overrides when needed. |
 
 ## Quick start (local, production-style)
 
 1. Install and configure **Green Metrics Tool** on Linux (official docs).  
-2. **`cp env.example env.local`** and set **`GMT_ROOT`** to the directory that contains `runner.py` (when you relocate GMT, change only `env.local` or your profile).  
-3. Build the default BEAM image **`st-erlang-index-27`** in your BEAM-web-server-benchmarks checkout (`make build` or `docker build`). Set **`BEAM_ROOT`** in `env.local` if you use the HTTP sweep with `static` / `dynamic` / `all`.  
+2. Place **`green-metrics-tool`**, **`BEAM-web-server-benchmarks`**, and **`beam-gmt-benchmarks`** as **siblings** in one parent folder (see [docs/PATHS_AND_ENV.md](docs/PATHS_AND_ENV.md)) — then **no exports and no `env.local`** are required; paths are auto-detected.  
+3. Build the default BEAM image **`st-erlang-index-27`** (`make build` or `docker build` in the BEAM repo).  
 4. Initialize git here if needed: `git init && git add -A && git commit -m "Initial benchmark scenario"`.  
 5. Run:
 
@@ -37,10 +37,9 @@ Defaults: `GMT_VAR_BEAM_IMAGE=st-erlang-index-27`, `GMT_VAR_NUM_REQUESTS=10000`.
 BEAM runs 13 request counts per HTTP container by default. Here, each count is a **separate** GMT measurement. See [docs/HTTP_SWEEP.md](docs/HTTP_SWEEP.md).
 
 ```bash
-# With BEAM_ROOT and GMT_ROOT in env.local:
 ./scripts/run_gmt_http_sweep.sh static              # all static images × full count list
 ./scripts/run_gmt_http_sweep.sh dynamic --quick     # all dynamic × three counts
-./scripts/run_gmt_http_sweep.sh st-erlang-index-27  # one image × full count list (no BEAM_ROOT)
+./scripts/run_gmt_http_sweep.sh st-erlang-index-27  # one image × full count list (BEAM discovery not used)
 ```
 
 ## GMT variables (scenario)

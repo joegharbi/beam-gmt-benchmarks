@@ -20,7 +20,7 @@ No. It is **orchestration only**: the same `usage_scenario.yml` and variables as
 
 ## Examples
 
-Discover all **static** containers from your BEAM repo and run the **full** sweep (build all images first). Put **`GMT_ROOT`** and **`BEAM_ROOT`** in `env.local` (see `env.example` and [PATHS_AND_ENV.md](PATHS_AND_ENV.md)):
+Discover all **static** containers from your BEAM repo and run the **full** sweep (build all images first). With the default sibling layout, **BEAM_ROOT** is auto-detected; otherwise set it in `env.local` ([PATHS_AND_ENV.md](PATHS_AND_ENV.md)).
 
 ```bash
 ./scripts/run_gmt_http_sweep.sh static

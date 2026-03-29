@@ -1,55 +1,51 @@
-# Root paths and environment variables
+# Paths: automatic by default
 
-All local tooling resolves directories through **root variables**, not hardcoded install paths. If you move **Green Metrics Tool** or clone **beam-gmt-benchmarks** elsewhere, update one place (`env.local` or your shell profile) instead of editing scripts.
+## Zero-configuration layout (recommended)
 
-## Variables
+Put three checkouts **next to each other** under the same parent directory:
 
-| Variable | Required | Meaning |
-|----------|----------|---------|
-| `GMT_ROOT` | **Yes** (for local scripts) | Root directory of the GMT checkout — the folder that contains `runner.py`. |
-| `BEAM_GMT_BENCHMARKS_ROOT` | No | Root of **this** repository (where `usage_scenario.yml` lives). Default: parent of `scripts/` relative to the script you run. Set this if your layout is unusual. |
-| `BEAM_ROOT` | For sweep discovery only | Root of **BEAM-web-server-benchmarks** — the folder that contains `benchmarks/static`, `benchmarks/dynamic`. |
-| `GMT_PYTHON` | No | Interpreter for `runner.py`. Default: `${GMT_ROOT}/.venv/bin/python3`, then `python3`. |
-| `BEAM_GMT_ENV_FILE` | No | If set to a file path, that file is sourced **before** `env.local` (useful to keep secrets or machine paths outside the repo). |
-
-Scripts build derived paths only from these roots, for example:
-
-- `${GMT_ROOT}/runner.py`
-- `${BEAM_GMT_BENCHMARKS_ROOT}/usage_scenario.yml` (via `REPO_ROOT` inside scripts)
-- `${BEAM_ROOT}/benchmarks/static`
-
-Trailing slashes on roots are stripped.
-
-## Recommended setup
-
-1. Copy the template:
-
-   ```bash
-   cp env.example env.local
-   ```
-
-2. Edit `env.local` and set at least:
-
-   ```bash
-   GMT_ROOT=/your/path/to/green-metrics-tool
-   BEAM_ROOT=/your/path/to/BEAM-web-server-benchmarks   # if you use the HTTP sweep with static|dynamic|all
-   ```
-
-3. `env.local` is **gitignored**. Run scripts from this repo as usual; they auto-load `env.local` from the repository root (the directory above `scripts/` that contains `usage_scenario.yml`).
-
-## Alternative: global profile
-
-You may `export GMT_ROOT=...` (and others) in `~/.bashrc` instead of `env.local`.
-
-## Alternative: config file outside the repo
-
-```bash
-export BEAM_GMT_ENV_FILE=$HOME/.config/beam-gmt-benchmarks/env.sh
-./scripts/run_local_production.sh
+```text
+your-workspace/
+  green-metrics-tool/           # official GMT clone (runner.py + lib/scenario_runner.py)
+  BEAM-web-server-benchmarks/   # benchmarks/static, benchmarks/dynamic, …
+  beam-gmt-benchmarks/          # this repo
 ```
 
-`BEAM_GMT_ENV_FILE` is sourced first; then `env.local` in the repo (if present) is sourced.
+Then run:
+
+```bash
+./scripts/run_local_production.sh
+./scripts/run_gmt_http_sweep.sh static
+```
+
+**No `export` and no `env.local` required.** Scripts start from this repo’s location, walk up toward `/`, and at each level look for **sibling** folders whose names match common clone names:
+
+| What | Sibling names tried |
+|------|---------------------|
+| GMT | `green-metrics-tool`, `GreenMetricsTool`, `gmt`, `green-metrics-tool-main`, `GMT` |
+| BEAM | `BEAM-web-server-benchmarks`, `beam-web-server-benchmarks`, `BEAM_web_server_benchmarks` |
+
+GMT is accepted only if both `runner.py` and `lib/scenario_runner.py` exist. BEAM is accepted if `benchmarks/static` exists.
+
+If you nest **beam-gmt-benchmarks** deeper (e.g. `experiments/beam-gmt-benchmarks`), the walk still eventually reaches a parent that also contains `green-metrics-tool`, so discovery keeps working as long as that layout holds.
+
+## Optional overrides (only when auto-discovery fails)
+
+Set variables **or** use `env.local` / `BEAM_GMT_ENV_FILE` if folders live elsewhere or use non-standard names.
+
+| Variable | When |
+|----------|------|
+| `GMT_ROOT` | Override detected GMT root |
+| `BEAM_GMT_BENCHMARKS_ROOT` | This repo root (rare; default = parent of `scripts/`) |
+| `BEAM_ROOT` | BEAM suite root (override or set if discovery fails) |
+| `GMT_PYTHON` | Python for `runner.py` (default `${GMT_ROOT}/.venv/bin/python3`, then `python3`) |
+| `BEAM_GMT_ENV_FILE` | File sourced **before** `env.local` |
+| `BEAM_GMT_VERBOSE=1` | Print auto-detected `GMT_ROOT` / `BEAM_ROOT` to stderr |
+
+`env.local` in this repo root is **gitignored** and loaded after `BEAM_GMT_ENV_FILE`. Copy `env.example` only when you need overrides.
+
+Trailing slashes on paths are stripped.
 
 ## Hosted / cluster runs
 
-On Green Coding’s infrastructure, GMT clones your Git repo; paths **inside** the scenario (`/tmp/repo/tools/...`) are defined by GMT, not by these variables. This document applies to **your** machine when you run `runner.py` locally.
+On Green Coding’s workers, GMT clones your Git repo; in-container paths like `/tmp/repo/tools/...` come from GMT, not from these variables. This page applies to **local** `runner.py` usage.

@@ -82,7 +82,7 @@ fi
 IMAGES=()
 case "${args[0]}" in
   static|dynamic)
-    : "${BEAM_ROOT:?Set BEAM_ROOT to the root directory of your BEAM-web-server-benchmarks checkout (for static/dynamic discovery)}"
+    : "${BEAM_ROOT:?beam-gmt-benchmarks: BEAM_ROOT not set and auto-discovery failed. Put BEAM-web-server-benchmarks next to this repo (same parent folder) or set BEAM_ROOT in env.local — see docs/PATHS_AND_ENV.md}"
     while IFS= read -r img; do
       [[ -n "$img" ]] && IMAGES+=("$img")
     done < <(discover_http_images "${args[0]}")
@@ -92,7 +92,7 @@ case "${args[0]}" in
     fi
     ;;
   all)
-    : "${BEAM_ROOT:?Set BEAM_ROOT to the root directory of your BEAM-web-server-benchmarks checkout (for all discovery)}"
+    : "${BEAM_ROOT:?beam-gmt-benchmarks: BEAM_ROOT not set and auto-discovery failed. Put BEAM-web-server-benchmarks next to this repo or set BEAM_ROOT in env.local — see docs/PATHS_AND_ENV.md}"
     while IFS= read -r img; do
       [[ -n "$img" ]] && IMAGES+=("$img")
     done < <(discover_http_images static)
@@ -121,6 +121,7 @@ exec > >(tee -a "$LOG") 2>&1
 total_runs=$((${#IMAGES[@]} * ${#REQUEST_COUNTS[@]}))
 echo "GMT_ROOT=$GMT_ROOT"
 echo "BEAM_GMT_BENCHMARKS_ROOT=$REPO_ROOT"
+echo "BEAM_ROOT=${BEAM_ROOT:-<unset — not needed for explicit image list>}"
 echo "Images: ${#IMAGES[@]}, request counts per image: ${#REQUEST_COUNTS[@]} (${REQUEST_COUNTS[*]}), total GMT runs: $total_runs"
 run_idx=0
 

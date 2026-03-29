@@ -13,7 +13,7 @@ This document describes how to run **full** Green Metrics Tool (GMT) measurement
 
 Follow GMT’s own installation and configuration guides for your distribution. The authoritative entry points are the [Green Metrics Tool documentation](https://docs.green-coding.io/) and the `README.md` in your GMT checkout.
 
-**Install locations** are never hardcoded in scripts: set **`GMT_ROOT`** (and optionally **`BEAM_GMT_BENCHMARKS_ROOT`**, **`BEAM_ROOT`**) via `env.local` or your environment. See [PATHS_AND_ENV.md](PATHS_AND_ENV.md).
+**Install locations:** with the default sibling-folder layout, **`GMT_ROOT`** and **`BEAM_ROOT`** are **auto-detected** (no exports). Use `env.local` or environment variables only when discovery fails — see [PATHS_AND_ENV.md](PATHS_AND_ENV.md).
 
 ## Prerequisites
 
@@ -46,7 +46,7 @@ Set them in the **host** environment if GMT propagates them into the loadgen con
 
 ## Run script
 
-Configure roots once (recommended: `cp env.example env.local` and set `GMT_ROOT=...` there), then:
+If `green-metrics-tool` and this repo sit next to each other under the same parent directory, run directly. Otherwise configure overrides (`env.local` or exports) as in [PATHS_AND_ENV.md](PATHS_AND_ENV.md).
 
 ```bash
 export GMT_VAR_BEAM_IMAGE=st-erlang-index-27      # optional; this is the default

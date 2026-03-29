@@ -19,7 +19,7 @@ usage_scenario.st-erlang-cowboy-27.yml      # image + N fixed in file
 usage_scenario.dy-elixir-phoenix-1-8.yml
 ```
 
-Run with (after `source env.local` or exporting roots; see [PATHS_AND_ENV.md](PATHS_AND_ENV.md)):
+Run with (default layout auto-sets roots; otherwise `source env.local` — see [PATHS_AND_ENV.md](PATHS_AND_ENV.md)):
 
 ```bash
 "${GMT_PYTHON:-${GMT_ROOT}/.venv/bin/python3}" "${GMT_ROOT}/runner.py" \
