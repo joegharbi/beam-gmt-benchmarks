@@ -56,6 +56,40 @@ cd "${BEAM_GMT_BENCHMARKS_ROOT}"
   --variable "__GMT_VAR_SWEEP_EXTRA__="
 ```
 
+### Erlang vs Elixir (static `index` — comparable pair)
+
+BEAM uses the same workload shape (static HTTP `index`); the Docker image names differ by language. Fair default pair for language comparison:
+
+| Language | Static index image |
+|----------|-------------------|
+| Erlang   | `st-erlang-index-27` |
+| Elixir   | `st-elixir-index-1-16` |
+
+Build both from **BEAM-web-server-benchmarks** (from the repo root):
+
+```bash
+cd /path/to/BEAM-web-server-benchmarks
+docker build -t st-erlang-index-27 ./benchmarks/static/erlang/index/st-erlang-index-27
+docker build -t st-elixir-index-1-16 ./benchmarks/static/elixir/index/st-elixir-index-1-16
+```
+
+Then from **beam-gmt-benchmarks**:
+
+**A — 13 separate GMT measurements** (one run per load; same style as `run_beam_gmt_http.sh` for Erlang):
+
+```bash
+cd /path/to/beam-gmt-benchmarks
+./scripts/run_beam_gmt_http.sh -c st-elixir-index-1-16
+```
+
+**B — one GMT measurement** (all 13 loads chained in `loadgen`; same style as full sweep for Erlang):
+
+```bash
+./scripts/run_local_full_sweep.sh -c st-elixir-index-1-16
+```
+
+Run the same pair of commands with `-c st-erlang-index-27` to collect Erlang numbers for comparison. Expect **13 stats IDs** for (A) vs **one stats ID** per image for (B).
+
 ## Main script: `run_beam_gmt_http.sh`
 
 | Invocation | Behaviour |
