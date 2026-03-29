@@ -77,7 +77,7 @@ For a manual command in an interactive shell, run `set -a && source /path/to/bea
 ## Troubleshooting
 
 - **`sudo: a terminal is required` / password prompts**: GMT’s full runner often calls `sudo` (e.g. hardware checks). Run from a real terminal with interactive sudo, or configure passwordless sudo for the commands GMT documents. Without that, measurements may abort before containers run.
-- **“Not a git repository”**: Run `git init && git add -A && git commit -m "init"` in this repo.
+- **`git status` failed / “not a git repository”**: GMT runs `git status` in the **current working directory** of `runner.py`. The provided scripts `cd` into **beam-gmt-benchmarks** before launching the runner so you can start them from your home directory; if you run `runner.py` yourself, `cd` into this repo first. You still need a real git repo here: `git init && git add -A && git commit -m "init"` if missing.
 - **Variable / substitution errors**: Names in YAML must match `__GMT_VAR_NAME__` and `--variable "__GMT_VAR_NAME__=value"` exactly (see GMT `runner.py` validation).
 - **Optimization / FastAPI import errors**: Install GMT’s `docker/requirements.txt` into the same venv you use for `runner.py`.
 - **Image not found**: Build or pull `GMT_VAR_BEAM_IMAGE` before starting the run.

@@ -69,6 +69,8 @@ BEAM: one CSV per container, one row per request count. GMT: one measurement ID 
 
 `runner.py` may invoke **`sudo`** (hardware / system checks). Run from a terminal where sudo works, or follow GMT’s install notes for non-interactive use. If sudo fails without a TTY, the run can stop early — fix sudo/SSH before expecting saved results in the GMT UI.
 
+**`git status` / “not a git repository”:** Green Metrics Tool’s `check_gmt_dir_dirty` runs `git status` in the **process current directory**, not inside `--uri`. `run_beam_gmt_http.sh` and `run_local_production.sh` **`cd` into this repo** before starting `runner.py` so you can call them from `~` or any path. This repository must still be a git checkout (`git init` + commit if needed).
+
 Single-container check:
 
 ```bash
