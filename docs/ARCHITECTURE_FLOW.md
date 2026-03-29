@@ -5,20 +5,21 @@ How **beam-gmt-benchmarks** sits between the **host**, **Green Metrics Tool**, a
 ## Flow
 
 ```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 100, 'rankSpacing': 200, 'padding': 45}}}%%
 flowchart LR
   subgraph host [Host]
     MSRs[RAPL / MSRs]
     Docker[Docker]
   end
-  subgraph gmt [green-metrics-tool]
+  subgraph gmt ["green-metrics-tool"]
     Runner[runner.py]
     Config[config.yml]
     DB[(DB / UI)]
   end
-  subgraph beam [BEAM-web-server-benchmarks]
+  subgraph beam ["BEAM-web-server-<br/>benchmarks"]
     Img[Docker images]
   end
-  subgraph orch [beam-gmt-benchmarks]
+  subgraph orch ["beam-gmt-<br/>benchmarks"]
     YML[usage_scenario.yml]
     Scripts[run_* scripts]
   end
@@ -52,5 +53,5 @@ Suggested order: **host + GMT** → **build images** → run scripts from **this
 
 ## Rendering the diagram
 
-- **GitHub**: native Mermaid in Markdown (this file).
+- **GitHub**: native Mermaid in Markdown (this file). The `%%{init: …}%%` block widens spacing between subgraphs; long titles use `<br/>` so they do not collide with neighbors.
 - **VS Code / Cursor**: Markdown preview with Mermaid support, or paste the `flowchart LR` block into [mermaid.live](https://mermaid.live) for PNG/SVG export.
