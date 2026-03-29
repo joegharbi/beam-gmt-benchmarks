@@ -15,7 +15,20 @@ Yes. You can run the full BEAM count list **inside the same `loadgen` container*
 
 **Tradeoffs vs 13 separate GMT runs:** loads are **back-to-back** in one session (shared thermal state, no cool-down between “official” runs). Energy and latency are still usable for exploration or hosted sanity checks; for paper-grade isolation, prefer **`run_beam_gmt_http.sh`** (one run per count).
 
-Manual run:
+**One command** (from this repo; paths auto-detected like `run_local_production.sh`):
+
+```bash
+cd /path/to/beam-gmt-benchmarks
+./scripts/run_local_full_sweep.sh
+```
+
+Default image is **`st-erlang-index-27`**. Override:
+
+```bash
+GMT_VAR_BEAM_IMAGE=st-erlang-cowboy-27 GMT_RUN_NAME="My sweep" ./scripts/run_local_full_sweep.sh
+```
+
+Equivalent manual `runner.py` invocation:
 
 ```bash
 cd "${BEAM_GMT_BENCHMARKS_ROOT}"
