@@ -1,0 +1,27 @@
+---
+name: BEAM HTTP full sweep (single measurement)
+author: beam-gmt-benchmarks
+description: >
+  One measured web server container from the BEAM benchmark suite naming scheme,
+  plus a load-generator container. Runs full BEAM HTTP request-count sweep in a
+  single GMT measurement via tools/gmt_http_load.py --sweep.
+
+services:
+  beam-server:
+    image: ghcr.io/joegharbi/dy-elixir-index-1-16:v1
+
+  loadgen:
+    image: alpine:3.19
+    folder-destination: /tmp/repo
+    depends_on:
+      - beam-server
+    setup-commands:
+      - command: apk add --no-cache python3 py3-requests
+
+flow:
+  - name: HTTP workload (sequential loads in one measurement)
+    container: loadgen
+    commands:
+      - type: console
+        shell: sh
+        command: python3 /tmp/repo/tools/gmt_http_load.py --url http://beam-server:80/ --sweep
