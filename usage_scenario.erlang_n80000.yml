@@ -1,0 +1,28 @@
+---
+name: BEAM static HTTP (single container)
+author: beam-gmt-benchmarks
+description: >
+  One measured web server container from the BEAM benchmark suite naming scheme,
+  plus a load-generator container. Load matches BEAM-web-server-benchmarks semantics:
+  configurable health wait (env) then parallel HTTP GETs via tools/gmt_http_load.py.
+  Server must listen on port 80 (same as BEAM Dockerfiles).
+
+services:
+  beam-server:
+    image: ghcr.io/joegharbi/st-erlang-index-27:v1
+
+  loadgen:
+    image: alpine:3.19
+    folder-destination: /tmp/repo
+    depends_on:
+      - beam-server
+    setup-commands:
+      - command: apk add --no-cache python3 py3-requests
+
+flow:
+  - name: HTTP workload
+    container: loadgen
+    commands:
+      - type: console
+        shell: sh
+        command: python3 /tmp/repo/tools/gmt_http_load.py --url http://beam-server:80/ --num_requests 80000
