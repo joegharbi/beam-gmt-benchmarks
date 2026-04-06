@@ -1,6 +1,6 @@
 # beam-gmt-benchmarks
 
-Production-oriented Green Metrics Tool (GMT) scenarios for BEAM web-server benchmarks.
+Production-oriented [Green Metrics Tool](https://metrics.green-coding.io/index.html) (GMT) scenarios for [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks).
 
 This repository connects:
 
@@ -80,6 +80,10 @@ Hosted entry points:
 - Request form: [metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html)
 - Cluster profiles: [Measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/)
 
+## Public results
+
+- Green Coding runs dashboard (joegharbi): [metrics.green-coding.io/runs.html](https://metrics.green-coding.io/runs.html?&uri=joegharbi&show_archived=false&show_other_users=true)
+
 ## Current explicit cluster scenarios
 
 ### Full sweep (one run per image, all counts chained)
@@ -102,4 +106,4 @@ Hosted entry points:
 
 ## License
 
-Add a repository license before publication (for example MIT, consistent with related benchmark repositories).
+MIT. See [`LICENSE`](LICENSE).
