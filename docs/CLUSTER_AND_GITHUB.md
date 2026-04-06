@@ -1,51 +1,92 @@
-# GitHub layout and Green Coding measurement cluster
+# GitHub and hosted cluster workflow
 
-This repository is structured so you can **push it to GitHub** (or any Git host) and either run it locally (see [LOCAL_PRODUCTION.md](LOCAL_PRODUCTION.md)) or use **Green Coding’s hosted infrastructure**. On your own machine, paths are **auto-detected** when GMT and BEAM sit next to this repo; optional **`GMT_ROOT`** / **`BEAM_ROOT`** overrides are in [PATHS_AND_ENV.md](PATHS_AND_ENV.md).
+This repository is designed to run both locally and on Green Coding hosted infrastructure.
+For cluster runs, treat the process as two independent artifacts:
 
-## What must be in the repo
+1. A Git repository with scenario files
+2. Pullable Docker images referenced by those scenarios
 
-Per [Measuring with hosted service](https://docs.green-coding.io/docs/measuring/measuring-service/) and GMT conventions:
+## Prerequisites for hosted runs
 
-- A **`usage_scenario.yml`** at the repository root (this repo provides one). For **one hosted job** that runs the **full in-container sweep**, use **`usage_scenario_full_sweep.yml`** and set **`__GMT_VAR_BEAM_IMAGE__`** plus **`__GMT_VAR_SWEEP_EXTRA__`** (empty string for the default 13-point list; or e.g. `--counts 100,1000` — see [HTTP_SWEEP.md](HTTP_SWEEP.md)).
-- **Containerized** workloads: the scenario references Docker **images**. The cluster runners must be able to **pull** those images (or build them from Dockerfiles in the repo—depending on how you integrate with GMT; the common case is a public registry image).
+- Repository pushed to GitHub (or another reachable git host)
+- Scenario file available at repository root
+- Referenced image available in a registry workers can pull
+- Hosted submission with matching branch and filename
 
-This repo does **not** embed the full BEAM benchmark Dockerfiles; it assumes the **image name** you pass (e.g. `st-erlang-index-27`) exists on the machine that executes the scenario. For hosted runs you typically:
+If images or repository are private, coordinate credentials with Green Coding before submission.
 
-1. Build images in CI and push to **GitHub Container Registry** (`ghcr.io/...`) or Docker Hub, then  
-2. Set `__GMT_VAR_BEAM_IMAGE__` to that full reference when scheduling the measurement, **or**  
-3. Replace the variable in a branch-specific `usage_scenario.yml` with the pinned image digest.
+## Recommended hosted workflow
 
-## Hosted measurement service
+1. Build benchmark images from `BEAM-web-server-benchmarks`
+2. Push images to `ghcr.io` (or Docker Hub)
+3. Set package visibility appropriately for worker access
+4. Push this repository updates
+5. Submit hosted run request
 
-- **Request a run**: [https://metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html)  
-- **Overview**: [Measuring with hosted service](https://docs.green-coding.io/docs/measuring/measuring-service/)
+Request form:
+- [https://metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html)
 
-Supply your Git repository URL, branch, and—if the UI supports it—the **usage scenario variables**:
+Overview:
+- [Measuring with hosted service](https://docs.green-coding.io/docs/measuring/measuring-service/)
 
-| Variable | Example | Meaning |
+## Scenario styles in this repository
+
+### Variable-based templates
+
+- `usage_scenario.yml` (single-load)
+- `usage_scenario_full_sweep.yml` (chained full sweep)
+
+Required placeholders:
+
+| Variable | Example | Purpose |
 |----------|---------|---------|
-| `__GMT_VAR_BEAM_IMAGE__` | `ghcr.io/your-org/st-erlang-index-27:v1` | Server image to measure |
-| `__GMT_VAR_NUM_REQUESTS__` | `10000` | Total parallel GETs (`usage_scenario.yml` single-load scenario) |
-| `__GMT_VAR_SWEEP_EXTRA__` | *(empty)* or `--counts 100,1000` | **`usage_scenario_full_sweep.yml` only** (hosted / manual): appended after `--sweep` in the load command; empty = full 13-step list. Locally: **`./scripts/run_beam_gmt_http.sh --together …`** sets this from **`-l`** / presets; avoid hand-editing unless you call **`runner.py`** yourself. |
+| `__GMT_VAR_BEAM_IMAGE__` | `ghcr.io/your-org/st-erlang-index-27:v1` | Server image |
+| `__GMT_VAR_NUM_REQUESTS__` | `80000` | Single-load request count |
+| `__GMT_VAR_SWEEP_EXTRA__` | *(empty)* or `--counts 100,1000` | Optional sweep count override |
 
-If the hosted form does not expose variables, duplicate `usage_scenario.yml` on a branch with literal `image:` and `num_requests` values, or open a scenario file per image (see [ADDING_SCENARIOS.md](ADDING_SCENARIOS.md)).
+Use these when your submission path reliably injects variables.
 
-## Measurement cluster (machine types)
+### Explicit cluster scenarios (no placeholders)
 
-[Measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/) documents **machine profiles** (e.g. profiling vs benchmarking, DVFS on/off, PSU metric providers). Choose a profile that matches your study:
+Use these when you want deterministic hosted submissions with no variable injection risk:
 
-- **Profiling-style** machines: closer to “off-the-shelf” power behavior.  
-- **Benchmarking-style** machines: more reproducible CPU frequency and related settings.
+- `usage_scenario_full_sweep.st-erlang-index-27.yml`
+- `usage_scenario_full_sweep.st-elixir-index-1-16.yml`
+- `usage_scenario_full_sweep.dy-erlang-index-27.yml`
+- `usage_scenario_full_sweep.dy-elixir-index-1-16.yml`
+- `usage_scenario.st-erlang-index-27.n80000.yml`
+- `usage_scenario.st-elixir-index-1-16.n80000.yml`
 
-Also read [measurement best practices](https://docs.green-coding.io/docs/measuring/best-practices/) (sampling rates, etc.) so results are comparable across runs.
+## Suggested submission matrix
 
-## `usage_scenario.yml` and Git URI
+For Erlang vs Elixir and static vs dynamic comparisons:
 
-GMT’s `runner.py` accepts `--uri` as a **folder** or a **git URL**. Hosted/cluster execution uses the remote Git state; keep the scenario file **free of machine-specific absolute paths**. This repo only references:
+| Dimension | Values |
+|-----------|--------|
+| Runtime family | `st` and `dy` |
+| Language | `erlang` and `elixir` |
+| Mode | full sweep together, plus optional isolated 80k checks |
 
-- Image names (parameterized).
-- Paths **inside** the cloned repo (`/tmp/repo/tools/...` after GMT copies the repo into the loadgen container).
+Start with four full-sweep runs (one per image), then add single-load high-stress runs as needed.
 
-## Private repositories
+## Cluster machine profile selection
 
-If the repo or container registry is private, coordinate with Green Coding (enterprise / credentials) so workers can clone and pull images. Public GitHub + public `ghcr.io` images are the straightforward path for free-tier hosted requests.
+Reference:
+- [Measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/)
+- [Measurement best practices](https://docs.green-coding.io/docs/measuring/best-practices/)
+
+In short:
+
+- Profiling-style machines reflect more real-world power behavior
+- Benchmarking-style machines usually improve strict reproducibility
+
+Choose one profile and keep it consistent across all compared runs.
+
+## Git URI and scenario portability
+
+GMT runner accepts `--uri` as folder or git URL. Hosted execution clones repository state from your submitted branch. Keep scenarios portable:
+
+- no local absolute host paths
+- only container image references and in-repo script paths
+
+This repository uses in-container paths such as `/tmp/repo/tools/...`, which are suitable for hosted execution.

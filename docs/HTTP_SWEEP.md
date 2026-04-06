@@ -39,6 +39,15 @@ Logs for both: **`logs/gmt_beam_http_<timestamp>.log`**
 
 Hosted / manual **`runner.py`** for together mode: [CLUSTER_AND_GITHUB.md](CLUSTER_AND_GITHUB.md) (`__GMT_VAR_BEAM_IMAGE__`, `__GMT_VAR_SWEEP_EXTRA__`).
 
+### Explicit hosted full-sweep files
+
+When hosted variable injection is not available, submit explicit full-sweep files directly:
+
+- `usage_scenario_full_sweep.st-erlang-index-27.yml`
+- `usage_scenario_full_sweep.st-elixir-index-1-16.yml`
+- `usage_scenario_full_sweep.dy-erlang-index-27.yml`
+- `usage_scenario_full_sweep.dy-elixir-index-1-16.yml`
+
 ### Erlang vs Elixir (static `index` — comparable pair)
 
 BEAM uses the same workload shape (static HTTP `index`); the Docker image names differ by language. Fair default pair for language comparison:

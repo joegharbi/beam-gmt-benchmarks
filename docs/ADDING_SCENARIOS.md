@@ -2,21 +2,22 @@
 
 The BEAM suite discovers benchmarks by directory layout and uses the **directory name** as the Docker **image** name (see BEAM `README.md`: `benchmarks/<type>/.../<container>/` → image `st-erlang-cowboy-27`, etc.). This GMT package reuses **the same image names** so energy and traffic from GMT can be compared conceptually to BEAM CSV runs.
 
-## One scenario file per measurement variant
+## Scenario patterns
 
-**Pattern A — variables (recommended for cluster):**  
+**Pattern A — variable templates:**  
 Keep a single `usage_scenario.yml` and pass different `__GMT_VAR_BEAM_IMAGE__` / `__GMT_VAR_NUM_REQUESTS__` per run (local `--variable` flags or hosted UI).
 
-**Pattern A′ — full BEAM-style HTTP sweep:**  
-Use `scripts/run_gmt_http_sweep.sh` to repeat the same **request-count lists** as `BEAM-web-server-benchmarks/scripts/run_benchmarks.sh` (100 through 80000, or `--quick` / `--super-quick`). Details: [HTTP_SWEEP.md](HTTP_SWEEP.md).
+**Pattern A′ — variable full sweep:**  
+Use `usage_scenario_full_sweep.yml` plus `__GMT_VAR_BEAM_IMAGE__` (and optional `__GMT_VAR_SWEEP_EXTRA__`). Details: [HTTP_SWEEP.md](HTTP_SWEEP.md).
 
-**Pattern B — named scenario files:**  
-Copy the root file to a new name and pin values for clarity in Git history:
+**Pattern B — explicit named scenarios (recommended when hosted variable injection is unreliable):**  
+Copy the root file to a new name and pin values for deterministic submissions:
 
 ```text
-usage_scenario.yml                          # default / documentation entry
-usage_scenario.st-erlang-cowboy-27.yml      # image + N fixed in file
-usage_scenario.dy-elixir-phoenix-1-8.yml
+usage_scenario.yml
+usage_scenario.st-erlang-index-27.n80000.yml
+usage_scenario_full_sweep.st-erlang-index-27.yml
+usage_scenario_full_sweep.dy-elixir-index-1-16.yml
 ```
 
 Run with (default layout auto-sets roots; otherwise `source env.local` — see [PATHS_AND_ENV.md](PATHS_AND_ENV.md)):
@@ -24,13 +25,24 @@ Run with (default layout auto-sets roots; otherwise `source env.local` — see [
 ```bash
 "${GMT_PYTHON:-${GMT_ROOT}/.venv/bin/python3}" "${GMT_ROOT}/runner.py" \
   --uri "${BEAM_GMT_BENCHMARKS_ROOT}" \
-  --filename usage_scenario.st-erlang-cowboy-27.yml \
-  --name "..." \
-  --variable "__GMT_VAR_BEAM_IMAGE__=st-erlang-cowboy-27" \
-  --variable "__GMT_VAR_NUM_REQUESTS__=10000"
+  --filename usage_scenario.st-erlang-index-27.n80000.yml \
+  --name "BEAM static Erlang n80000"
 ```
 
-If you literalize `image:` and `num_requests` in the YAML, you can omit variables for that file—just ensure every `__GMT_VAR_*__` placeholder is either removed or still supplied.
+If you literalize `image:` and `num_requests` in the YAML, omit runtime variables for that file and ensure no `__GMT_VAR_*__` placeholders remain.
+
+## Naming convention (recommended)
+
+Use filename patterns that encode scope and workload directly:
+
+- Single-load: `usage_scenario.<st|dy>-<lang>-<app>-<version>.n<requests>.yml`
+- Full sweep: `usage_scenario_full_sweep.<st|dy>-<lang>-<app>-<version>.yml`
+
+Examples:
+
+- `usage_scenario.st-erlang-index-27.n80000.yml`
+- `usage_scenario.dy-elixir-index-1-16.n80000.yml`
+- `usage_scenario_full_sweep.st-elixir-index-1-16.yml`
 
 ## Checklist for each new server image
 
@@ -38,7 +50,7 @@ If you literalize `image:` and `num_requests` in the YAML, you can omit variable
 2. **Naming**: Use the same **image tag** as BEAM (`st-*`, `dy-*`, `ws-*` prefixes).
 3. **GMT scenario**: Point `beam-server.image` at that name (or registry URL).
 4. **Load**: For plain HTTP GET benchmarks, reuse `tools/gmt_http_load.py` and the same `flow` block; only change variables or duplicate the file.
-5. **Document**: Add one line to the “Scenarios” table in the main `README.md` (image name, type, notes).
+5. **Document**: Add the scenario filename and purpose to `README.md`.
 
 ## WebSocket and other protocols
 

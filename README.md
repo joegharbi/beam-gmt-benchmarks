@@ -1,86 +1,107 @@
 # beam-gmt-benchmarks
 
-Green Metrics Tool (GMT) usage scenarios for **BEAM** web servers, aligned with the naming and HTTP load semantics of **BEAM-web-server-benchmarks** (same image names, health wait + parallel GETs). Use this repository **standalone on GitHub** for local runs or for [Green Coding’s hosted measurements](https://docs.green-coding.io/docs/measuring/measuring-service/).
+Production-oriented Green Metrics Tool (GMT) scenarios for BEAM web-server benchmarks.
+This repository bridges:
 
-## Contents
+- benchmark images from `BEAM-web-server-benchmarks`
+- measurement orchestration and load generation
+- local GMT runs and hosted Green Coding cluster submissions
+
+The HTTP workload is intentionally aligned with BEAM semantics: health check + parallel GET requests over BEAM-compatible request-count presets.
+
+## Repository map
 
 | Path | Purpose |
 |------|---------|
-| `usage_scenario.yml` | Root scenario GMT expects; one **beam-server** + **loadgen**; image and request count are GMT variables. |
-| `usage_scenario_full_sweep.yml` | Same services; **one** flow runs all **13** BEAM loads via `gmt_http_load.py --sweep` (one GMT measurement — see [HTTP_SWEEP.md](docs/HTTP_SWEEP.md)). |
-| `tools/gmt_http_load.py` | Load generator (BEAM-comparable: env-based health wait, then `ThreadPoolExecutor` GETs). |
-| `scripts/_lib_env.sh` | Shared path setup: auto-finds GMT + BEAM sibling checkouts, optional `env.local` overrides. |
-| `scripts/run_local_production.sh` | **Single** production-style GMT run (default image + load via env vars). |
-| `scripts/run_beam_gmt_http.sh` | **Single HTTP orchestrator**: default **separate** GMT run per (image × load); add **`--together`** (or **`--all-in-one`**) for one run per image with chained loads — see [HTTP_SWEEP.md](docs/HTTP_SWEEP.md). |
-| `scripts/run_local_full_sweep.sh` | Legacy alias → **`run_beam_gmt_http.sh --together`** (maps **`--scope`** to static/dynamic flags). |
-| `scripts/beam_gmt_http_constants.sh` | Preset request-count arrays and optional **`BEAM_GMT_HTTP_PRESET_CONTAINERS`**. |
-| `scripts/run_gmt_http_sweep.sh` | Legacy wrapper → `run_beam_gmt_http.sh`. |
-| `docs/LOCAL_PRODUCTION.md` | Full local checklist, env vars, troubleshooting. |
-| `docs/HTTP_SWEEP.md` | Why sweeps are separate GMT runs; examples; `GMT_SWEEP_*` env vars. |
-| `docs/CLUSTER_AND_GITHUB.md` | Hosted service, cluster machine types, image registry notes. |
-| `docs/ADDING_SCENARIOS.md` | How to add more images following BEAM’s structure. |
-| `env.example` | Optional **`env.local`** template — only if auto-discovery fails. |
-| `docs/PATHS_AND_ENV.md` | Default “sibling folders” layout; overrides when needed. |
-| `docs/ARCHITECTURE_FLOW.md` | Mermaid diagram: host, GMT, BEAM images, this repo; links to other docs. |
-| `docs/ENERGY_METRICS.md` | RAPL in `config.yml`, dev `hardware_info_root.py`, where to read µJ in stats. |
-| `scripts/check_rapl_ready.sh` | Host + **setuid** RAPL binary checks (avoids `rdmsr: Permission denied`). |
-| `scripts/build_gmt_rapl_providers.sh` | Builds CPU/DRAM RAPL `metric-provider-binary` with **setuid root** (needs `sudo`). |
+| `usage_scenario.yml` | Variable-based single-load scenario (`__GMT_VAR_BEAM_IMAGE__`, `__GMT_VAR_NUM_REQUESTS__`). |
+| `usage_scenario_full_sweep.yml` | Variable-based chained-load scenario (`--sweep`) for one-run-per-image measurements. |
+| `usage_scenario_full_sweep.*.yml` | Explicit cluster-ready full-sweep scenarios (no runtime variable substitution). |
+| `usage_scenario.*.n80000.yml` | Explicit single-load 80k scenarios (high-load focused checks). |
+| `tools/gmt_http_load.py` | HTTP load generator used in scenarios (`--num_requests` and `--sweep`). |
+| `scripts/run_beam_gmt_http.sh` | Main local orchestrator for separate vs together runs. |
+| `scripts/run_local_production.sh` | Single local production-style GMT run. |
+| `scripts/run_local_full_sweep.sh` | Backward-compatible alias for `run_beam_gmt_http.sh --together`. |
+| `scripts/_lib_env.sh` | Shared environment/path bootstrap logic. |
+| `scripts/beam_gmt_http_constants.sh` | Request-count presets and optional container presets. |
+| `docs/` | Operational and methodology documentation (see index below). |
 
-## Quick start (local, production-style)
+## Documentation index
 
-1. Install and configure **Green Metrics Tool** on Linux (official docs).  
-2. Place **`green-metrics-tool`**, **`BEAM-web-server-benchmarks`**, and **`beam-gmt-benchmarks`** as **siblings** in one parent folder (see [docs/PATHS_AND_ENV.md](docs/PATHS_AND_ENV.md)) — then **no exports and no `env.local`** are required; paths are auto-detected.  
-3. Build the default BEAM image **`st-erlang-index-27`** (`make build` or `docker build` in the BEAM repo).  
-4. Initialize git here if needed: `git init && git add -A && git commit -m "Initial benchmark scenario"`.  
-5. Run:
+- [docs/LOCAL_PRODUCTION.md](docs/LOCAL_PRODUCTION.md): local production-style run path
+- [docs/HTTP_SWEEP.md](docs/HTTP_SWEEP.md): separate vs together mode and workload presets
+- [docs/CLUSTER_AND_GITHUB.md](docs/CLUSTER_AND_GITHUB.md): hosted submission workflow
+- [docs/ADDING_SCENARIOS.md](docs/ADDING_SCENARIOS.md): naming, scenario expansion, and protocol boundaries
+- [docs/PATHS_AND_ENV.md](docs/PATHS_AND_ENV.md): folder layout and overrides
+- [docs/ENERGY_METRICS.md](docs/ENERGY_METRICS.md): RAPL setup and troubleshooting
+- [docs/ARCHITECTURE_FLOW.md](docs/ARCHITECTURE_FLOW.md): architecture overview diagram
 
-   ```bash
-   ./scripts/run_local_production.sh
-   ```
+## Quick start (local)
 
-Defaults: `GMT_VAR_BEAM_IMAGE=st-erlang-index-27`, `GMT_VAR_NUM_REQUESTS=10000`. Override with environment variables before calling the script.
-
-**Chained loads (one GMT run per image):** use **`--together`** on the same script (or **`run_local_full_sweep.sh`**, which wraps it):
+1. Install and configure GMT on Linux.
+2. Keep these repositories as sibling folders: `green-metrics-tool`, `BEAM-web-server-benchmarks`, `beam-gmt-benchmarks`.
+3. Build at least one BEAM server image (example: `st-erlang-index-27`).
+4. Run a production-style local measurement:
 
 ```bash
-./scripts/run_beam_gmt_http.sh --together -c st-erlang-index-27
-./scripts/run_beam_gmt_http.sh --together --static-only   # discover static images only
+./scripts/run_local_production.sh
 ```
 
-### Orchestrated HTTP measurements (like BEAM `make run`)
+Default single-load variables:
 
-See [docs/HTTP_SWEEP.md](docs/HTTP_SWEEP.md). Quick examples:
+- `GMT_VAR_BEAM_IMAGE=st-erlang-index-27`
+- `GMT_VAR_NUM_REQUESTS=10000`
+
+For deeper local orchestration examples (quick/full presets, static/dynamic subsets, together mode), use:
 
 ```bash
 ./scripts/run_beam_gmt_http.sh --help
-./scripts/run_beam_gmt_http.sh --dry-run | tail -3   # preview total runs
-./scripts/run_beam_gmt_http.sh                       # separate: all static + dynamic × 13 loads each
-./scripts/run_beam_gmt_http.sh --together -c st-erlang-index-27   # one GMT run, chained 13 loads
-./scripts/run_beam_gmt_http.sh --static-only --quick
-./scripts/run_beam_gmt_http.sh -c st-erlang-index-27 -l 1000
 ```
 
-## GMT variables (scenario)
+## Scenario strategy
 
-| Placeholder in `usage_scenario.yml` | Set via `--variable` or hosted UI |
-|-----------------------------------|-----------------------------------|
-| `__GMT_VAR_BEAM_IMAGE__` | Docker image for the server (e.g. `st-erlang-cowboy-27` or `ghcr.io/org/st-erlang-index-27:tag`). |
-| `__GMT_VAR_NUM_REQUESTS__` | Integer; total HTTP GETs issued in parallel (same role as request counts in BEAM HTTP runs). |
+This repository supports two scenario styles:
 
-Variable names must match GMT’s pattern `__GMT_VAR_<NAME>__` (see GMT `runner.py`).
+1. **Variable-based scenarios** (portable templates):
+   - `usage_scenario.yml`
+   - `usage_scenario_full_sweep.yml`
+2. **Explicit scenarios** (recommended for hosted reliability):
+   - fixed image and load directly in YAML
+   - avoids submission-time placeholder issues
 
-## Hosted cluster / metrics.green-coding.io
+Use explicit files when hosted UI variable injection is unavailable or unreliable.
 
-- Request runs: [metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html)  
-- Cluster hardware context: [Measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/)  
-- Details: [docs/CLUSTER_AND_GITHUB.md](docs/CLUSTER_AND_GITHUB.md)
+## Hosted cluster workflow (recommended)
 
-Your server image must be **pullable** on the worker (public registry or arranged access). This repo does not vendor BEAM Dockerfiles.
+1. Build benchmark images locally or in CI.
+2. Push images to a pullable registry (e.g. `ghcr.io/...`) and set package visibility appropriately.
+3. Push this repo to GitHub.
+4. Submit hosted runs using explicit scenario filenames.
 
-## Differences from `gmt-intro`
+Hosted entry points:
 
-The sibling learning repo under the same paper workspace uses **dev-oriented** runner flags for a quick path to charts. **This** repository is intended for **final, comparable** numbers: full system checks, optimization phase, dependency download as GMT recommends, and documentation aimed at GitHub + cluster reuse.
+- Request form: [metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html)
+- Cluster profiles: [Measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/)
+
+## Current explicit cluster scenarios
+
+### Full sweep (one run per image, all counts chained)
+
+- `usage_scenario_full_sweep.st-erlang-index-27.yml`
+- `usage_scenario_full_sweep.st-elixir-index-1-16.yml`
+- `usage_scenario_full_sweep.dy-erlang-index-27.yml`
+- `usage_scenario_full_sweep.dy-elixir-index-1-16.yml`
+
+### Single-load 80k
+
+- `usage_scenario.st-erlang-index-27.n80000.yml`
+- `usage_scenario.st-elixir-index-1-16.n80000.yml`
+
+## Notes on interpretation
+
+- “Together” (`--sweep`) mode chains loads in one run and may include thermal/state carry-over.
+- “Separate” mode creates one run per load and is often cleaner for per-load comparisons.
+- Compare energy with success/failure and runtime, not energy alone.
 
 ## License
 
-Specify a license when you publish (e.g. MIT to match BEAM-web-server-benchmarks).
+Add a repository license before publication (for example MIT, consistent with related benchmark repositories).
