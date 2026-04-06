@@ -12,6 +12,8 @@ Then rerun `./scripts/run_beam_gmt_http.sh …`. Details: [ENERGY_METRICS.md](EN
 
 In **BEAM-web-server-benchmarks**, static and dynamic HTTP benchmarks use a fixed list of `--num_requests` values per container. The full list is 13 points from **100** through **80000** (`scripts/run_benchmarks.sh`: `full_http_requests`).
 
+Reference repository: [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks)
+
 Green Metrics Tool records **one measurement per `runner.py` invocation**.
 
 **Single orchestrator:** **`scripts/run_beam_gmt_http.sh`**

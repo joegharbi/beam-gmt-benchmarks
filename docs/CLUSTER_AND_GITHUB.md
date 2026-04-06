@@ -17,7 +17,7 @@ If images or repository are private, coordinate credentials with Green Coding be
 
 ## Recommended hosted workflow
 
-1. Build benchmark images from `BEAM-web-server-benchmarks`
+1. Build benchmark images from [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks)
 2. Push images to `ghcr.io` (or Docker Hub)
 3. Set package visibility appropriately for worker access
 4. Push this repository updates
