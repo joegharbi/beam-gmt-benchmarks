@@ -1,7 +1,12 @@
 ---
-# Green Metrics Tool usage scenario — BEAM HTTP (production-oriented).
-# Image and load size are injected via GMT variables (see README and scripts/run_local_production.sh).
-name: BEAM static HTTP (single container)
+# Green Metrics Tool usage scenario — BEAM HTTP (single-load template).
+# Required submission variables:
+#   __GMT_VAR_BEAM_IMAGE__   e.g. ghcr.io/joegharbi/st-erlang-index-27:v1
+#   __GMT_VAR_NUM_REQUESTS__ e.g. 10000
+#
+# This file is intentionally generic. For deterministic hosted submissions without
+# variable injection, use explicit scenario files (see README).
+name: BEAM HTTP (single-load variable template)
 author: beam-gmt-benchmarks
 description: >
   One measured web server container from the BEAM benchmark suite naming scheme,

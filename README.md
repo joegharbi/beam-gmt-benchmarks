@@ -4,7 +4,7 @@ Production-oriented [Green Metrics Tool](https://metrics.green-coding.io/index.h
 
 This repository connects:
 
-- server images from [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks)
+- server images from BEAM-web-server-benchmarks
 - GMT scenarios and load generation
 - local runs and hosted Green Coding cluster submissions
 
