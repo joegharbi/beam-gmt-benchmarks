@@ -1,6 +1,6 @@
 # Three-repository flow (BEAM → GMT)
 
-How **beam-gmt-benchmarks** sits between the **host**, **Green Metrics Tool**, and **BEAM-web-server-benchmarks** when you run measurements. Use this diagram in documentation or slides; details live in the linked guides below.
+How **beam-gmt-benchmarks** sits between the **host**, **Green Metrics Tool**, and [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks). Entry point and reproduction steps: [README.md](../README.md). Use this page for diagrams; operational detail is in `docs/*.md`.
 
 ## Flow
 

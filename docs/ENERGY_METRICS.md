@@ -1,5 +1,7 @@
 # Local energy (RAPL) and reading concrete values
 
+Applies to **local** GMT installs. Hosted cluster energy depends on the worker’s configured providers. Overview: [README.md](../README.md).
+
 ## 1. Enable RAPL in GMT
 
 In **`green-metrics-tool/config.yml`**, under `measurement.metric_providers.linux`, keep CPU utilization and **uncomment** the two RAPL **component** providers:

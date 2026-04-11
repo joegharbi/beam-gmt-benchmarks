@@ -1,109 +1,125 @@
 # beam-gmt-benchmarks
 
-Production-oriented [Green Metrics Tool](https://metrics.green-coding.io/index.html) (GMT) scenarios for [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks).
+Green Metrics Tool ([GMT](https://metrics.green-coding.io/index.html)) usage scenarios for HTTP benchmarks defined in [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks). The load generator mirrors BEAM’s pattern: wait for HTTP 200, then issue parallel GETs for configurable request counts.
 
-This repository connects:
+This repository is the **orchestration layer**: YAML scenarios, a small Python load tool, and shell scripts for local runs. **Docker images** are built from the BEAM repository and referenced by name or registry URL (for example `ghcr.io/<user>/st-erlang-index-27:v1`).
 
-- server images from BEAM-web-server-benchmarks
-- GMT scenarios and load generation
-- local runs and hosted Green Coding cluster submissions
+---
 
-The HTTP workload follows BEAM semantics (health check + parallel GET request presets).
+## Contents at a glance
 
-## Repository map
+| What | Where |
+|------|--------|
+| Single-load template (variables) | [`usage_scenario.yml`](usage_scenario.yml) |
+| Full sweep in one measurement (variables) | [`usage_scenario_full_sweep.yml`](usage_scenario_full_sweep.yml) |
+| Full sweep, image pinned (no variables) | `usage_scenario_full_sweep.<image>.yml` |
+| Single load 80k, image pinned | `usage_scenario.<image>.n80000.yml` |
+| Load generator | [`tools/gmt_http_load.py`](tools/gmt_http_load.py) |
+| Local HTTP orchestration | [`scripts/run_beam_gmt_http.sh`](scripts/run_beam_gmt_http.sh) |
+| One local production-style run | [`scripts/run_local_production.sh`](scripts/run_local_production.sh) |
 
-| Path | Purpose |
-|------|---------|
-| `usage_scenario.yml` | Variable-based single-load scenario (`__GMT_VAR_BEAM_IMAGE__`, `__GMT_VAR_NUM_REQUESTS__`). |
-| `usage_scenario_full_sweep.yml` | Variable-based chained-load scenario (`--sweep`) for one-run-per-image measurements. |
-| `usage_scenario_full_sweep.*.yml` | Explicit cluster-ready full-sweep scenarios (no runtime variable substitution). |
-| `usage_scenario.*.n80000.yml` | Explicit single-load 80k scenarios (high-load focused checks). |
-| `tools/gmt_http_load.py` | HTTP load generator used in scenarios (`--num_requests` and `--sweep`). |
-| `scripts/run_beam_gmt_http.sh` | Main local orchestrator for separate vs together runs. |
-| `scripts/run_local_production.sh` | Single local production-style GMT run. |
-| `scripts/run_local_full_sweep.sh` | Backward-compatible alias for `run_beam_gmt_http.sh --together`. |
-| `scripts/_lib_env.sh` | Shared environment/path bootstrap logic. |
-| `scripts/beam_gmt_http_constants.sh` | Request-count presets and optional container presets. |
-| `docs/` | Operational and methodology documentation (see index below). |
+---
 
-## Core documentation
+## Reproduce a hosted measurement (Green Coding)
 
-- [docs/LOCAL_PRODUCTION.md](docs/LOCAL_PRODUCTION.md) - local production-style workflow
-- [docs/HTTP_SWEEP.md](docs/HTTP_SWEEP.md) - separate vs together measurement modes
-- [docs/CLUSTER_AND_GITHUB.md](docs/CLUSTER_AND_GITHUB.md) - hosted cluster submission workflow
-- [docs/ENERGY_METRICS.md](docs/ENERGY_METRICS.md) - RAPL setup and troubleshooting
+These steps match the working flow on [metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html).
 
-## Quick start
+1. **Build** the server image from [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks) (directory name = image tag, e.g. `st-erlang-index-27`).
+2. **Tag and push** to a registry workers can pull (often `ghcr.io`). Set the package to **public** unless Green Coding has given you private pull credentials.
+3. **Push** this repository to GitHub so the hosted runner can clone it.
+4. Open the [measurement request form](https://metrics.green-coding.io/request.html). Fill repository URL, branch (e.g. `main`), and scenario filename (e.g. `usage_scenario.yml`).
+5. **Usage scenario variables** — the form already shows `__GMT_VAR_` … `__` around the key field. Enter only the **middle part** of the variable name:
 
-1. Install and configure GMT on Linux.
-2. Keep these repositories as sibling folders: `green-metrics-tool`, `BEAM-web-server-benchmarks`, `beam-gmt-benchmarks`.
-3. Build at least one BEAM server image (example: `st-erlang-index-27`).
-4. Run a production-style local measurement:
+| In the form “key” column | Value example | Becomes in YAML |
+|---------------------------|---------------|-----------------|
+| `BEAM_IMAGE` | `ghcr.io/joegharbi/st-erlang-index-27:v1` | `__GMT_VAR_BEAM_IMAGE__` |
+| `NUM_REQUESTS` | `40000` | `__GMT_VAR_NUM_REQUESTS__` |
+
+Do **not** type the full `__GMT_VAR_BEAM_IMAGE__` in the key box; that would produce a double-wrapped name and placeholders would not be replaced (you would get an email about “Unreplaced leftover variables”).
+
+6. Submit and wait for the result email. Browse runs: [ScenarioRunner runs (joegharbi)](https://metrics.green-coding.io/runs.html?&uri=joegharbi&show_archived=false&show_other_users=true).
+
+For **full sweep** with the variable template, use [`usage_scenario_full_sweep.yml`](usage_scenario_full_sweep.yml) and add:
+
+| Key column | Value |
+|------------|--------|
+| `BEAM_IMAGE` | your `ghcr.io/...` image |
+| `SWEEP_EXTRA` | leave **empty** for the default 13-point list, or e.g. `--counts 100,1000,80000` |
+
+---
+
+## Reproduce a local measurement
+
+1. Install [Green Metrics Tool](https://docs.green-coding.io/) on Linux (PostgreSQL, Docker, `config.yml`, venv with app dependencies).
+2. Place three folders as **siblings**: `green-metrics-tool`, `BEAM-web-server-benchmarks`, `beam-gmt-benchmarks` (paths are auto-detected; see [docs/PATHS_AND_ENV.md](docs/PATHS_AND_ENV.md)).
+3. Build at least one BEAM image locally (same names as in the BEAM repo).
+4. From `beam-gmt-benchmarks`:
 
 ```bash
 ./scripts/run_local_production.sh
 ```
 
-Default single-load variables:
-
-- `GMT_VAR_BEAM_IMAGE=st-erlang-index-27`
-- `GMT_VAR_NUM_REQUESTS=10000`
-
-For local orchestration examples (quick/full presets, static/dynamic subsets, together mode), use:
+Defaults: `GMT_VAR_BEAM_IMAGE=st-erlang-index-27`, `GMT_VAR_NUM_REQUESTS=10000`. For many images and loads:
 
 ```bash
 ./scripts/run_beam_gmt_http.sh --help
+./scripts/run_beam_gmt_http.sh -c st-erlang-index-27 -l 1000
+./scripts/run_beam_gmt_http.sh --together -c st-erlang-index-27
 ```
 
-## Scenario strategy (simple)
+Full local checklist: [docs/LOCAL_PRODUCTION.md](docs/LOCAL_PRODUCTION.md). Laptop RAPL issues: [docs/ENERGY_METRICS.md](docs/ENERGY_METRICS.md).
 
-Use one of these two approaches:
+---
 
-1. **Variable templates**:
-   - `usage_scenario.yml`
-   - `usage_scenario_full_sweep.yml`
-2. **Explicit scenarios** (recommended for hosted reliability):
-   - fixed image and load directly in YAML
-   - avoids submission-time placeholder issues
+## Variable templates vs explicit YAML
 
-Use explicit files when hosted UI variable injection is unavailable or unreliable.
+- **Templates** (`usage_scenario.yml`, `usage_scenario_full_sweep.yml`): one file, many runs; pass variables from the hosted form (keys `BEAM_IMAGE`, `NUM_REQUESTS`, …) or from `runner.py --variable`.
+- **Explicit files** (`usage_scenario_full_sweep.st-erlang-index-27.yml`, `usage_scenario.st-erlang-index-27.n80000.yml`, …): image and load are fixed in the file; submit **without** variables — useful for batch jobs or when you want filenames to document the exact configuration.
 
-## Hosted workflow
+---
 
-1. Build benchmark images locally or in CI.
-2. Push images to a pullable registry (e.g. `ghcr.io/...`) and set package visibility appropriately.
-3. Push this repo to GitHub.
-4. Submit hosted runs using explicit scenario filenames.
+## Pinned scenarios in this repository
 
-Hosted entry points:
-
-- Request form: [metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html)
-- Cluster profiles: [Measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/)
-
-## Public results
-
-- Green Coding runs dashboard (joegharbi): [metrics.green-coding.io/runs.html](https://metrics.green-coding.io/runs.html?&uri=joegharbi&show_archived=false&show_other_users=true)
-
-## Current explicit cluster scenarios
-
-### Full sweep (one run per image, all counts chained)
+**Full sweep (one GMT run per file, chained loads):**
 
 - `usage_scenario_full_sweep.st-erlang-index-27.yml`
 - `usage_scenario_full_sweep.st-elixir-index-1-16.yml`
 - `usage_scenario_full_sweep.dy-erlang-index-27.yml`
 - `usage_scenario_full_sweep.dy-elixir-index-1-16.yml`
 
-### Single-load 80k
+**Single load 80k:**
 
 - `usage_scenario.st-erlang-index-27.n80000.yml`
 - `usage_scenario.st-elixir-index-1-16.n80000.yml`
 
-## Result interpretation notes
+Image lines in these files use `ghcr.io/joegharbi/...:v1` — fork or search-replace for your registry and tag before pushing.
 
-- Together mode (`--sweep`) chains loads in one run and includes thermal/state carry-over.
-- Separate mode runs one load per measurement and is cleaner for per-load comparisons.
-- Interpret energy together with success/failure and runtime.
+---
+
+## Interpreting results
+
+- **Together** (`--sweep`): one run chains all loads; expect shared thermal and server state between steps — not the same as isolated per-load runs.
+- **Separate** (default in `run_beam_gmt_http.sh`): one GMT measurement per load level; cleaner for point-by-point curves.
+- Compare **energy** together with **runtime**, **success/failure counts** (see `GMT_HTTP_LOAD_SUMMARY` in logs), and the **machine profile** label on the run.
+
+---
+
+## Documentation
+
+| Document | Topic |
+|----------|--------|
+| [docs/CLUSTER_AND_GITHUB.md](docs/CLUSTER_AND_GITHUB.md) | Hosted workflow, variables, machine profiles |
+| [docs/HTTP_SWEEP.md](docs/HTTP_SWEEP.md) | Separate vs together, presets, examples |
+| [docs/LOCAL_PRODUCTION.md](docs/LOCAL_PRODUCTION.md) | Local production-style runs |
+| [docs/ENERGY_METRICS.md](docs/ENERGY_METRICS.md) | RAPL, laptop bypass, troubleshooting |
+| [docs/PATHS_AND_ENV.md](docs/PATHS_AND_ENV.md) | Layout and environment overrides |
+| [docs/ADDING_SCENARIOS.md](docs/ADDING_SCENARIOS.md) | New images, naming, WebSocket limits |
+| [docs/ARCHITECTURE_FLOW.md](docs/ARCHITECTURE_FLOW.md) | Diagram: BEAM ↔ this repo ↔ GMT ↔ host |
+
+Official GMT docs: [docs.green-coding.io](https://docs.green-coding.io/).
+
+---
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+MIT. See [LICENSE](LICENSE).

@@ -1,16 +1,16 @@
 # Adding more measurements (align with BEAM-web-server-benchmarks)
 
-The BEAM suite discovers benchmarks by directory layout and uses the **directory name** as the Docker **image** name (see BEAM `README.md`: `benchmarks/<type>/.../<container>/` → image `st-erlang-cowboy-27`, etc.). This GMT package reuses **the same image names** so energy and traffic from GMT can be compared conceptually to BEAM CSV runs.
+Upstream benchmark definitions: [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks). The BEAM suite discovers benchmarks by directory layout and uses the **directory name** as the Docker **image** name (`benchmarks/<type>/.../<container>/` → image `st-erlang-cowboy-27`, etc.). This repository reuses **the same image names** so GMT runs line up with BEAM CSV rows.
 
 ## Scenario patterns
 
 **Pattern A — variable templates:**  
-Keep a single `usage_scenario.yml` and pass different `__GMT_VAR_BEAM_IMAGE__` / `__GMT_VAR_NUM_REQUESTS__` per run (local `--variable` flags or hosted UI).
+Keep a single `usage_scenario.yml` and pass different values per run. Locally use `--variable "__GMT_VAR_BEAM_IMAGE__=..."`. On the hosted form, use keys **`BEAM_IMAGE`** and **`NUM_REQUESTS`** only (the UI builds `__GMT_VAR_...__`); see [CLUSTER_AND_GITHUB.md](CLUSTER_AND_GITHUB.md).
 
 **Pattern A′ — variable full sweep:**  
 Use `usage_scenario_full_sweep.yml` plus `__GMT_VAR_BEAM_IMAGE__` (and optional `__GMT_VAR_SWEEP_EXTRA__`). Details: [HTTP_SWEEP.md](HTTP_SWEEP.md).
 
-**Pattern B — explicit named scenarios (recommended when hosted variable injection is unreliable):**  
+**Pattern B — explicit named scenarios (pinned image/load; optional hosted path with zero variables):**  
 Copy the root file to a new name and pin values for deterministic submissions:
 
 ```text

@@ -39,11 +39,11 @@ The same **`-c`**, **`-l`**, **`--quick`**, **`--static-only`**, **`--dynamic-on
 
 Logs for both: **`logs/gmt_beam_http_<timestamp>.log`**
 
-Hosted / manual **`runner.py`** for together mode: [CLUSTER_AND_GITHUB.md](CLUSTER_AND_GITHUB.md) (`__GMT_VAR_BEAM_IMAGE__`, `__GMT_VAR_SWEEP_EXTRA__`).
+Hosted submissions: see [CLUSTER_AND_GITHUB.md](CLUSTER_AND_GITHUB.md). **Important:** on [metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html), variable **keys** are only the middle segment (`BEAM_IMAGE`, `NUM_REQUESTS`, `SWEEP_EXTRA`); the form adds `__GMT_VAR_` and `__` automatically.
 
 ### Explicit hosted full-sweep files
 
-When hosted variable injection is not available, submit explicit full-sweep files directly:
+When you prefer not to use variables, submit these filenames directly (no variable rows):
 
 - `usage_scenario_full_sweep.st-erlang-index-27.yml`
 - `usage_scenario_full_sweep.st-elixir-index-1-16.yml`

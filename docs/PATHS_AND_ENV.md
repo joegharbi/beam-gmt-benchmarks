@@ -1,5 +1,7 @@
 # Paths: automatic by default
 
+See [README.md](../README.md) for the full workflow. This file is only about directory layout and overrides.
+
 ## Zero-configuration layout (recommended)
 
 Put three checkouts **next to each other** under the same parent directory:
@@ -15,7 +17,7 @@ Then run:
 
 ```bash
 ./scripts/run_local_production.sh
-./scripts/run_gmt_http_sweep.sh static
+./scripts/run_beam_gmt_http.sh --static-only --super-quick
 ```
 
 **No `export` and no `env.local` required.** Scripts start from this repo’s location, walk up toward `/`, and at each level look for **sibling** folders whose names match common clone names:

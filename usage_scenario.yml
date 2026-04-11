@@ -1,11 +1,15 @@
 ---
-# Green Metrics Tool usage scenario — BEAM HTTP (single-load template).
-# Required submission variables:
-#   __GMT_VAR_BEAM_IMAGE__   e.g. ghcr.io/joegharbi/st-erlang-index-27:v1
-#   __GMT_VAR_NUM_REQUESTS__ e.g. 10000
+# BEAM HTTP — single-load template (GMT placeholders).
 #
-# This file is intentionally generic. For deterministic hosted submissions without
-# variable injection, use explicit scenario files (see README).
+# Hosted request form (metrics.green-coding.io/request.html): the UI wraps keys as
+# __GMT_VAR_<key>__. Enter ONLY the middle part in the form:
+#   Key BEAM_IMAGE    → __GMT_VAR_BEAM_IMAGE__
+#   Key NUM_REQUESTS  → __GMT_VAR_NUM_REQUESTS__
+# Do not type the full __GMT_VAR_...__ into the key field.
+#
+# Local runner.py: use --variable "__GMT_VAR_BEAM_IMAGE__=..." etc. (full names).
+#
+# Pin without variables: see usage_scenario.<image>.n80000.yml in the repo root.
 name: BEAM HTTP (single-load variable template)
 author: beam-gmt-benchmarks
 description: >

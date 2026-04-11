@@ -1,6 +1,6 @@
 # Local production-style measurements
 
-For how the three repos and the host connect at a glance, see [ARCHITECTURE_FLOW.md](ARCHITECTURE_FLOW.md) (includes a Mermaid diagram).
+Benchmark images come from [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks). For how the three repos and the host connect, see [ARCHITECTURE_FLOW.md](ARCHITECTURE_FLOW.md) (Mermaid diagram).
 
 This document describes how to run **full** Green Metrics Tool (GMT) measurements against this repository on your own Linux host. The goal is **comparable, persisted results** in the GMT UI (PostgreSQL-backed runs, optimization phase, standard metric providers)—not the shortened “intro” path that uses `--dev-*` or `--skip-optimizations`.
 

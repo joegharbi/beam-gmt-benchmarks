@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Internal: sourced by run_local_production.sh and run_gmt_http_sweep.sh after SCRIPT_DIR is set.
+# Internal: sourced by measurement scripts after SCRIPT_DIR is set.
 #
 # Path resolution (least configuration first):
 #   1) Optional BEAM_GMT_ENV_FILE, then env.local (override / non-standard layouts).

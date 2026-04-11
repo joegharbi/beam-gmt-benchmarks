@@ -1,92 +1,95 @@
 # GitHub and hosted cluster workflow
 
-This repository is designed to run both locally and on Green Coding hosted infrastructure.
-For cluster runs, treat the process as two independent artifacts:
+Hosted measurements use two things the workers must reach:
 
-1. A Git repository with scenario files
-2. Pullable Docker images referenced by those scenarios
+1. **This Git repository** (scenarios and `tools/gmt_http_load.py`)
+2. **Docker images** for `beam-server` (usually from [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks), pushed to `ghcr.io` or another registry)
 
-## Prerequisites for hosted runs
+If either the repo or the registry is private, arrange access with Green Coding before submitting.
 
-- Repository pushed to GitHub (or another reachable git host)
-- Scenario file available at repository root
-- Referenced image available in a registry workers can pull
-- Hosted submission with matching branch and filename
+---
 
-If images or repository are private, coordinate credentials with Green Coding before submission.
+## Request form
 
-## Recommended hosted workflow
+- Submit software: [metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html)
+- Service overview: [Measuring with hosted service](https://docs.green-coding.io/docs/measuring/measuring-service/)
 
-1. Build benchmark images from [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks)
-2. Push images to `ghcr.io` (or Docker Hub)
-3. Set package visibility appropriately for worker access
-4. Push this repository updates
-5. Submit hosted run request
+---
 
-Request form:
-- [https://metrics.green-coding.io/request.html](https://metrics.green-coding.io/request.html)
+## Usage scenario variables (hosted form)
 
-Overview:
-- [Measuring with hosted service](https://docs.green-coding.io/docs/measuring/measuring-service/)
+The form wraps each key as `__GMT_VAR_<your-key>__`. In the **key** field, enter **only** the middle segment (letters, digits, underscores).
 
-## Scenario styles in this repository
+### Single-load template — `usage_scenario.yml`
 
-### Variable-based templates
+| Key field (as shown in form) | Value field |
+|------------------------------|-------------|
+| `BEAM_IMAGE` | Full image reference, e.g. `ghcr.io/joegharbi/st-erlang-index-27:v1` |
+| `NUM_REQUESTS` | Integer, e.g. `40000` |
 
-- `usage_scenario.yml` (single-load)
-- `usage_scenario_full_sweep.yml` (chained full sweep)
+**Common mistake:** typing `__GMT_VAR_BEAM_IMAGE__` in the key box. That produces an invalid doubled name and you get an email: *Unreplaced leftover variables are still in usage_scenario*.
 
-Required placeholders:
+### Full-sweep template — `usage_scenario_full_sweep.yml`
 
-| Variable | Example | Purpose |
-|----------|---------|---------|
-| `__GMT_VAR_BEAM_IMAGE__` | `ghcr.io/your-org/st-erlang-index-27:v1` | Server image |
-| `__GMT_VAR_NUM_REQUESTS__` | `80000` | Single-load request count |
-| `__GMT_VAR_SWEEP_EXTRA__` | *(empty)* or `--counts 100,1000` | Optional sweep count override |
+| Key field | Value field |
+|-----------|-------------|
+| `BEAM_IMAGE` | Full image reference |
+| `SWEEP_EXTRA` | Leave **empty** for the default 13-point BEAM list, or e.g. `--counts 100,5000,80000` |
 
-Use these when your submission path reliably injects variables.
+---
 
-### Explicit cluster scenarios (no placeholders)
+## Scenario styles in this repo
 
-Use these when you want deterministic hosted submissions with no variable injection risk:
+**Variable templates** (one YAML, many runs via variables):
 
-- `usage_scenario_full_sweep.st-erlang-index-27.yml`
-- `usage_scenario_full_sweep.st-elixir-index-1-16.yml`
-- `usage_scenario_full_sweep.dy-erlang-index-27.yml`
-- `usage_scenario_full_sweep.dy-elixir-index-1-16.yml`
-- `usage_scenario.st-erlang-index-27.n80000.yml`
-- `usage_scenario.st-elixir-index-1-16.n80000.yml`
+- `usage_scenario.yml`
+- `usage_scenario_full_sweep.yml`
 
-## Suggested submission matrix
+**Explicit YAML** (no variables on submit; image and load are fixed in the file):
 
-For Erlang vs Elixir and static vs dynamic comparisons:
+- `usage_scenario_full_sweep.st-erlang-index-27.yml` (and Elixir / dynamic variants)
+- `usage_scenario.st-erlang-index-27.n80000.yml` (and Elixir variant)
 
-| Dimension | Values |
-|-----------|--------|
-| Runtime family | `st` and `dy` |
-| Language | `erlang` and `elixir` |
-| Mode | full sweep together, plus optional isolated 80k checks |
+Adjust `ghcr.io/joegharbi/...` in explicit files if you use another registry or user.
 
-Start with four full-sweep runs (one per image), then add single-load high-stress runs as needed.
+---
 
-## Cluster machine profile selection
+## Study matrix (example)
 
-Reference:
-- [Measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/)
-- [Measurement best practices](https://docs.green-coding.io/docs/measuring/best-practices/)
+| Axis | Typical values |
+|------|----------------|
+| Workload shape | `st` (static) vs `dy` (dynamic) |
+| Language | Erlang vs Elixir (e.g. `*-index-*` pairs) |
+| GMT mode | Full sweep in one run vs many single-load runs |
 
-In short:
+Keep **machine profile** consistent across runs you intend to compare directly. See [Measurement cluster](https://docs.green-coding.io/docs/measuring/measurement-cluster/) and [best practices](https://docs.green-coding.io/docs/measuring/best-practices/).
 
-- Profiling-style machines reflect more real-world power behavior
-- Benchmarking-style machines usually improve strict reproducibility
+---
 
-Choose one profile and keep it consistent across all compared runs.
+## Portability rules
 
-## Git URI and scenario portability
+Hosted execution clones your branch. Scenarios must not depend on host-only paths. Image references may be local tags on a dev machine or full registry URLs on the cluster. Loadgen uses paths under the cloned repo, e.g. `/tmp/repo/tools/gmt_http_load.py` after GMT prepares the container.
 
-GMT runner accepts `--uri` as folder or git URL. Hosted execution clones repository state from your submitted branch. Keep scenarios portable:
+---
 
-- no local absolute host paths
-- only container image references and in-repo script paths
+## Local `runner.py` (same variables as YAML)
 
-This repository uses in-container paths such as `/tmp/repo/tools/...`, which are suitable for hosted execution.
+Use full placeholder names with `--variable`:
+
+```bash
+"${GMT_ROOT}/.venv/bin/python3" "${GMT_ROOT}/runner.py" \
+  --uri "${BEAM_GMT_BENCHMARKS_ROOT}" \
+  --filename usage_scenario.yml \
+  --name "example" \
+  --variable "__GMT_VAR_BEAM_IMAGE__=ghcr.io/joegharbi/st-erlang-index-27:v1" \
+  --variable "__GMT_VAR_NUM_REQUESTS__=40000"
+```
+
+For full sweep:
+
+```bash
+--variable "__GMT_VAR_BEAM_IMAGE__=ghcr.io/joegharbi/st-erlang-index-27:v1" \
+--variable "__GMT_VAR_SWEEP_EXTRA__="
+```
+
+(Empty `SWEEP_EXTRA` keeps the default sweep in `gmt_http_load.py`.)
