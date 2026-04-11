@@ -1,8 +1,16 @@
 # beam-gmt-benchmarks
 
-Green Metrics Tool ([GMT](https://metrics.green-coding.io/index.html)) usage scenarios for HTTP benchmarks defined in [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks). The load generator mirrors BEAM’s pattern: wait for HTTP 200, then issue parallel GETs for configurable request counts.
+**Production-oriented** [Green Metrics Tool](https://metrics.green-coding.io/index.html) (GMT) scenarios for HTTP benchmarks aligned with [BEAM-web-server-benchmarks](https://github.com/joegharbi/BEAM-web-server-benchmarks): health wait, then parallel GETs for the same request-count presets as the BEAM suite. Use this repo for **reproducible energy and performance measurements** on your own GMT host or on **Green Coding’s hosted cluster**.
 
-This repository is the **orchestration layer**: YAML scenarios, a small Python load tool, and shell scripts for local runs. **Docker images** are built from the BEAM repository and referenced by name or registry URL (for example `ghcr.io/<user>/st-erlang-index-27:v1`).
+This repository is the **orchestration layer**: YAML scenarios, [`tools/gmt_http_load.py`](tools/gmt_http_load.py), and shell scripts. **Docker images** are built from the BEAM repository and referenced by local tag or registry URL (e.g. `ghcr.io/joegharbi/st-erlang-index-27:v1`).
+
+### Where to find full results (public runs)
+
+Hosted measurements submitted under this work appear on the Green Coding ScenarioRunner dashboard (filter by URI `joegharbi`):
+
+**[https://metrics.green-coding.io/runs.html?&uri=joegharbi&show_archived=false&show_other_users=true](https://metrics.green-coding.io/runs.html?&uri=joegharbi&show_archived=false&show_other_users=true)**
+
+From there you can open individual runs, timelines, and comparisons. The same link is repeated after the hosted submission steps below.
 
 ---
 
@@ -37,7 +45,7 @@ These steps match the working flow on [metrics.green-coding.io/request.html](htt
 
 Do **not** type the full `__GMT_VAR_BEAM_IMAGE__` in the key box; that would produce a double-wrapped name and placeholders would not be replaced (you would get an email about “Unreplaced leftover variables”).
 
-6. Submit and wait for the result email. Browse runs: [ScenarioRunner runs (joegharbi)](https://metrics.green-coding.io/runs.html?&uri=joegharbi&show_archived=false&show_other_users=true).
+6. Submit and wait for the result email. When the run is processed, find it on the **[full results dashboard](https://metrics.green-coding.io/runs.html?&uri=joegharbi&show_archived=false&show_other_users=true)** (same as the link at the top of this README).
 
 For **full sweep** with the variable template, use [`usage_scenario_full_sweep.yml`](usage_scenario_full_sweep.yml) and add:
 
