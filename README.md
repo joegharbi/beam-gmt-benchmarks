@@ -4,6 +4,16 @@
 
 This repository is the **orchestration layer**: YAML scenarios, [`tools/gmt_http_load.py`](tools/gmt_http_load.py), and shell scripts. **Docker images** are built from the BEAM repository and referenced by local tag or registry URL (e.g. `ghcr.io/joegharbi/st-erlang-index-27:v1`).
 
+### What is required at runtime
+
+To run locally, you need:
+
+1. this repository (`beam-gmt-benchmarks`)
+2. a working GMT installation (runner + dependencies)
+3. server images available locally or in a pullable registry
+
+`BEAM-web-server-benchmarks` source code is useful to **build** images, but it is not required at runtime if images already exist.
+
 ### Where to find full results (public runs)
 
 Hosted measurements submitted under this work appear on the Green Coding ScenarioRunner dashboard (filter by URI `joegharbi`):
@@ -59,8 +69,8 @@ For **full sweep** with the variable template, use [`usage_scenario_full_sweep.y
 ## Reproduce a local measurement
 
 1. Install [Green Metrics Tool](https://docs.green-coding.io/) on Linux (PostgreSQL, Docker, `config.yml`, venv with app dependencies).
-2. Place three folders as **siblings**: `green-metrics-tool`, `BEAM-web-server-benchmarks`, `beam-gmt-benchmarks` (paths are auto-detected; see [docs/PATHS_AND_ENV.md](docs/PATHS_AND_ENV.md)).
-3. Build at least one BEAM image locally (same names as in the BEAM repo).
+2. Ensure at least one server image is available (local tag or registry URL), e.g. `ghcr.io/joegharbi/st-erlang-index-27:v1`.
+3. If GMT is not auto-detected, set `GMT_ROOT` in `env.local` (or export it).
 4. From `beam-gmt-benchmarks`:
 
 ```bash
@@ -75,7 +85,15 @@ Defaults: `GMT_VAR_BEAM_IMAGE=st-erlang-index-27`, `GMT_VAR_NUM_REQUESTS=10000`.
 ./scripts/run_beam_gmt_http.sh --together -c st-erlang-index-27
 ```
 
-Full local checklist: [docs/LOCAL_PRODUCTION.md](docs/LOCAL_PRODUCTION.md). Laptop RAPL issues: [docs/ENERGY_METRICS.md](docs/ENERGY_METRICS.md).
+Optional `env.local` overrides:
+
+```bash
+export GMT_ROOT=/absolute/path/to/green-metrics-tool
+# Needed only when you want filesystem image discovery and do not pass -c
+export BEAM_ROOT=/absolute/path/to/BEAM-web-server-benchmarks
+```
+
+Sibling folders are a convenience for auto-detection, not a hard requirement. Full local checklist: [docs/LOCAL_PRODUCTION.md](docs/LOCAL_PRODUCTION.md). Path behavior: [docs/PATHS_AND_ENV.md](docs/PATHS_AND_ENV.md). Laptop RAPL issues: [docs/ENERGY_METRICS.md](docs/ENERGY_METRICS.md).
 
 ---
 
